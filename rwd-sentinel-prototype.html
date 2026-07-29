@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RWD Sentinel — Data-Quality Anomaly Detection & Governance</title>
+<style>
+/* ============================================================
+   RWD Sentinel — single-file prototype
+   Design tokens per spec §10
+   ============================================================ */
+:root{
+  --bg:#F3F5F7; --surface:#FFFFFF; --surface-2:#FAFBFC;
+  --line:#E2E7EB; --line-strong:#CBD3DA;
+  --ink:#16242B; --ink-2:#4A5A63; --ink-3:#7A8892;
+  --teal:#0E5F6E; --teal-2:#0B4E5A; --teal-tint:#E3F0F2;
+  --amber:#B4791A; --amber-tint:#FBF0DC; --amber-line:#E9C77E;
+  --red:#B5342B; --red-tint:#FBE7E5; --red-line:#E7A9A3;
+  --purple:#5B4B9E; --purple-tint:#ECE8F6; --purple-line:#C7BCE7;
+  --green:#2E7D52; --green-tint:#E1F1E7; --green-line:#A7D6BA;
+  --band:#D7E7EA; --band-line:#9EC3CA;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --sh-sm:0 1px 2px rgba(16,40,48,.06),0 1px 3px rgba(16,40,48,.04);
+  --sh-md:0 2px 6px rgba(16,40,48,.08),0 6px 18px rgba(16,40,48,.06);
+  --r:10px; --r-sm:7px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+@media (prefers-reduced-motion:no-preference){*{transition:background-color .12s,border-color .12s,color .12s,box-shadow .12s}}
+.mono{font-family:var(--mono)}
+a{color:var(--teal);text-decoration:none;cursor:pointer}
+a:hover{text-decoration:underline}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
+
+/* ---- shell ---- */
+.app{display:grid;grid-template-columns:236px 1fr;grid-template-rows:auto 1fr;min-height:100vh}
+header.top{grid-column:1/3;background:var(--teal);color:#fff;display:flex;align-items:center;gap:20px;padding:0 20px;height:56px;position:sticky;top:0;z-index:40}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;letter-spacing:.2px}
+.brand .mk{width:20px;height:20px;border-radius:5px;background:linear-gradient(135deg,#7FD6D6,#0E5F6E);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5)}
+.ctx{display:flex;gap:18px;flex:1;overflow:hidden;font-size:12px}
+.ctx .c{white-space:nowrap;color:rgba(255,255,255,.72)}
+.ctx .c b{color:#fff;font-weight:600}
+.ctx .c .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.roles{display:flex;align-items:center;gap:6px}
+.roles select{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit}
+.roles select option{color:#16242B}
+
+nav.side{background:var(--surface);border-right:1px solid var(--line);padding:14px 10px;overflow-y:auto}
+.nav-grp{margin-bottom:16px}
+.nav-grp .lbl{font-size:10.5px;font-weight:700;letter-spacing:.9px;color:var(--ink-3);text-transform:uppercase;padding:0 8px 6px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:var(--r-sm);color:var(--ink-2);font-size:13px;cursor:pointer;position:relative}
+.nav-item:hover{background:var(--surface-2)}
+.nav-item.active{background:var(--teal-tint);color:var(--teal-2);font-weight:600}
+.nav-item.sub{padding-left:26px;font-size:12.5px}
+.nav-item .badge{margin-left:auto;background:var(--teal);color:#fff;font-size:10.5px;font-weight:600;border-radius:9px;padding:1px 7px;min-width:19px;text-align:center}
+.nav-item.active .badge{background:var(--teal-2)}
+.nav-ico{width:15px;text-align:center;opacity:.75;font-size:13px}
+
+main{padding:22px 26px 60px;overflow-x:hidden;min-width:0}
+.crumb{font-size:12px;color:var(--ink-3);margin-bottom:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.crumb a{color:var(--ink-3)}.crumb a:hover{color:var(--teal)}
+.crumb .sep{opacity:.5}
+h1.page{font-size:21px;font-weight:600;margin:0 0 3px}
+.page-sub{color:var(--ink-2);font-size:13px;margin:0 0 20px;max-width:70ch}
+
+/* ---- cards / grid ---- */
+.grid{display:grid;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh-sm)}
+.card.pad{padding:16px 18px}
+.card-h{padding:13px 18px;border-bottom:1px solid var(--line);font-weight:600;font-size:13.5px;display:flex;align-items:center;gap:8px}
+.card-h .r{margin-left:auto;font-weight:400;font-size:12px;color:var(--ink-3)}
+.card-b{padding:16px 18px}
+.muted{color:var(--ink-3)}
+.small{font-size:12px}
+.xsmall{font-size:11px}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 15px;box-shadow:var(--sh-sm)}
+.kpi .v{font-size:26px;font-weight:600;font-family:var(--mono);line-height:1.1}
+.kpi .k{font-size:11.5px;color:var(--ink-3);margin-top:3px;text-transform:uppercase;letter-spacing:.4px}
+.kpi .sub{font-size:11px;color:var(--ink-2);margin-top:4px}
+.kpi.warn .v{color:var(--amber)} .kpi.risk .v{color:var(--red)} .kpi.gov .v{color:var(--purple)}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;border:1px solid transparent;white-space:nowrap;letter-spacing:.2px}
+.chip .cd{width:6px;height:6px;border-radius:50%}
+.chip.teal{background:var(--teal-tint);color:var(--teal-2);border-color:#BFDDE1}.chip.teal .cd{background:var(--teal)}
+.chip.amber{background:var(--amber-tint);color:var(--amber);border-color:var(--amber-line)}.chip.amber .cd{background:var(--amber)}
+.chip.red{background:var(--red-tint);color:var(--red);border-color:var(--red-line)}.chip.red .cd{background:var(--red)}
+.chip.purple{background:var(--purple-tint);color:var(--purple);border-color:var(--purple-line)}.chip.purple .cd{background:var(--purple)}
+.chip.green{background:var(--green-tint);color:var(--green);border-color:var(--green-line)}.chip.green .cd{background:var(--green)}
+.chip.grey{background:#EEF1F3;color:var(--ink-2);border-color:var(--line-strong)}.chip.grey .cd{background:var(--ink-3)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--line-strong);color:var(--ink);border-radius:var(--r-sm);padding:7px 13px;font-size:12.5px;font-weight:500;cursor:pointer}
+.btn:hover{border-color:var(--ink-3);background:var(--surface-2)}
+.btn.pri{background:var(--teal);border-color:var(--teal);color:#fff}.btn.pri:hover{background:var(--teal-2)}
+.btn.gov{background:var(--purple);border-color:var(--purple);color:#fff}.btn.gov:hover{filter:brightness(.94)}
+.btn.danger{background:var(--red);border-color:var(--red);color:#fff}.btn.danger:hover{filter:brightness(.94)}
+.btn.sm{padding:4px 9px;font-size:11.5px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--teal)}
+
+/* tables */
+table.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+table.tbl th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-3);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+table.tbl tr:last-child td{border-bottom:none}
+table.tbl tr.click{cursor:pointer}
+table.tbl tr.click:hover td{background:var(--surface-2)}
+.num{font-family:var(--mono)}
+.pos{color:var(--green)}.neg{color:var(--red)}
+
+/* score bars */
+.scorewrap{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}
+.sc{}
+.sc .n{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc .track{height:5px;background:#EBEFF2;border-radius:3px;overflow:hidden}
+.sc .fill{height:100%;background:var(--teal);border-radius:3px}
+.sc .fill.hi{background:var(--red)}.sc .fill.md{background:var(--amber)}
+.sc .val{font-size:11px;font-family:var(--mono);color:var(--ink-2);margin-top:2px}
+
+/* callouts */
+.callout{border-radius:var(--r-sm);padding:11px 14px;font-size:12.5px;border:1px solid;display:flex;gap:9px;align-items:flex-start}
+.callout .ci{font-weight:700}
+.callout.amber{background:var(--amber-tint);border-color:var(--amber-line);color:#6E4B12}
+.callout.red{background:var(--red-tint);border-color:var(--red-line);color:#7A211B}
+.callout.purple{background:var(--purple-tint);border-color:var(--purple-line);color:#3D3270}
+.callout.teal{background:var(--teal-tint);border-color:#BFDDE1;color:var(--teal-2)}
+.callout.green{background:var(--green-tint);border-color:var(--green-line);color:#1E5638}
+
+/* stepper */
+.stepper{display:flex;gap:0;margin:2px 0 18px}
+.step{flex:1;text-align:center;position:relative;padding:9px 4px;font-size:11.5px;color:var(--ink-3);border-bottom:2px solid var(--line)}
+.step.done{color:var(--green);border-color:var(--green-line)}
+.step.cur{color:var(--teal-2);border-color:var(--teal);font-weight:600}
+.step .sn{display:inline-flex;width:18px;height:18px;border-radius:50%;background:#EBEFF2;color:var(--ink-3);align-items:center;justify-content:center;font-size:10.5px;font-weight:700;margin-right:6px}
+.step.done .sn{background:var(--green);color:#fff}
+.step.cur .sn{background:var(--teal);color:#fff}
+
+/* tabs */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:18px;flex-wrap:wrap}
+.tab{padding:9px 14px;font-size:12.5px;color:var(--ink-2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--teal-2);border-color:var(--teal);font-weight:600}
+.tab .b{background:#EBEFF2;color:var(--ink-2);font-size:10px;border-radius:8px;padding:0 6px;margin-left:5px}
+
+/* disclosure */
+details{border:1px solid var(--line);border-radius:var(--r-sm);margin:8px 0;background:var(--surface-2)}
+details summary{cursor:pointer;padding:9px 13px;font-size:12.5px;font-weight:600;list-style:none;display:flex;align-items:center;gap:8px}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:'▸';color:var(--ink-3);font-size:10px}
+details[open] summary::before{content:'▾'}
+details .dd{padding:2px 14px 13px;font-size:12.5px;color:var(--ink-2)}
+
+/* pips */
+.pips{display:inline-flex;gap:3px}
+.pip{width:9px;height:9px;border-radius:2px;background:#E1E6EA}
+.pip.on{background:var(--teal)}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(16,36,43,.44);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:44px 20px;overflow-y:auto}
+.modal{background:var(--surface);border-radius:12px;box-shadow:var(--sh-md);max-width:720px;width:100%;overflow:hidden}
+.modal.wide{max-width:900px}
+.modal-h{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.modal-h h3{margin:0;font-size:15px}
+.modal-h .x{margin-left:auto;cursor:pointer;color:var(--ink-3);font-size:20px;line-height:1;background:none;border:none}
+.modal-b{padding:18px 20px;max-height:66vh;overflow-y:auto}
+.modal-f{padding:13px 20px;border-top:1px solid var(--line);display:flex;gap:9px;justify-content:flex-end;background:var(--surface-2)}
+
+/* toast */
+.toasts{position:fixed;right:18px;bottom:18px;z-index:80;display:flex;flex-direction:column;gap:9px;max-width:360px}
+.toast{background:var(--ink);color:#fff;border-radius:9px;padding:11px 14px;font-size:12.5px;box-shadow:var(--sh-md);display:flex;gap:9px;align-items:flex-start}
+.toast .ti{color:#7FD6D6;font-weight:700}
+.toast.gov .ti{color:#C7BCE7}
+
+/* misc */
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.between{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.divider{height:1px;background:var(--line);margin:14px 0}
+.tag{font-size:10.5px;font-family:var(--mono);color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line);padding:1px 6px;border-radius:5px}
+.pass{color:var(--green);font-weight:600}.fail{color:var(--red);font-weight:600}.partial{color:var(--amber);font-weight:600}
+.foot-note{margin-top:34px;padding-top:14px;border-top:1px dashed var(--line-strong);font-size:11px;color:var(--ink-3)}
+.evrow{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px}
+.evrow:last-child{border:none}
+.evrow .em{font-family:var(--mono);color:var(--ink-3);white-space:nowrap;font-size:11px}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:var(--r-sm);overflow:hidden}
+.seg button{background:var(--surface);border:none;border-right:1px solid var(--line);padding:5px 11px;font-size:11.5px;cursor:pointer;color:var(--ink-2)}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--teal);color:#fff}
+.locked{opacity:.55;pointer-events:none}
+.locknote{font-size:11px;color:var(--amber);display:flex;gap:5px;align-items:center;margin-top:4px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-2);margin-top:6px}
+.legend .li{display:flex;gap:5px;align-items:center}
+.legend .sw{width:14px;height:9px;border-radius:2px;display:inline-block}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="toasts" id="toasts"></div>
+<div id="modalRoot"></div>
+
+<script>
+/* ============================================================
+   STATE
+   ============================================================ */
+const ROLES = {analyst:'Analyst · M. Okafor', reviewer:'Reviewer · Dr. L. Ferreira', executive:'Executive · read-only'};
+const state = {
+  role:'analyst',
+  route:'overview',
+  sub:null,
+  tab:null,
+  modal:null,
+};
+
+/* ---------- SEED DATA (spec §9) ---------- */
+const CLAIMS_DATA = {
+  dataset:{ id:'DSN-114', name:'Meridian Claims Research Database', vendor:'Meridian Health Data, Inc.',
+    domains:'Medical + pharmacy claims · enrollment · provider registry', obs:'2019-01 → 2026-05',
+    window:'2024-01 → 2026-05', geo:'United States (national)', cadence:'Monthly', working:'v2026.06',
+    incoming:'v2026.07', latestComplete:'2026-04', runout:'2026-05 at ~78% runout', dict:'DD v3.4',
+    limits:'Closed claims; ~95% completeness horizon at ~4 months; POS coding varies by submitter.' },
+  cohort:{ id:'C-104', name:'Cardiometabolic Longitudinal Cohort', version:'v7', patients:48213,
+    approval:'COH-APR-2025-11', window:'2024-01 → 2026-05' },
+  scan:{ id:'SCN-2026-06', suite:'v3.2' },
+  families:[
+    ['Volume','Capture loss / duplication'],['Distribution shift','Source-composition / mapping'],
+    ['Trend break','Refresh / pipeline boundaries'],['Segment divergence','Localized feed failures'],
+    ['Relationship change','Feed integrity / double-counting'],['Concentration','Silent loss of small sources'],
+    ['Missingness & completeness','Fields dropping out'],['Provider/source coverage','Roster deltas'],
+    ['Code emergence/dropout','Terminology drift'],['Runout / latency','Immaturity of recent periods']
+  ],
+  fitness:{ working:'Accept with restrictions', workingNote:'POS exclusion; utilization provisional',
+    incoming:'Decision pending', incomingRec:'Accept with restrictions' },
+};
+
+const CLAIMS_FINDINGS = [
+  { id:'ANM-0142', inv:'INV-2026-041', family:'Volume', title:'Outpatient encounters −21.3% vs expected',
+    summary:'Sustained outpatient-encounter shortfall over 3 months, concentrated in South Atlantic + East North Central, onset aligned to the v2026.06 refresh boundary.',
+    measure:'Outpatient encounters / 1,000', segment:'South Atlantic · East North Central', period:'2026-02 → 2026-04',
+    magnitude:'−21.3%', reach:'~24% of cohort', confidence:'High', persistence:'3 periods', dqrisk:'Likely data issue',
+    priority:87, status:'Under investigation', timing:'Newly occurring', signals:4, dqi:true, developed:true,
+    score:{Magnitude:88,Confidence:82,Reach:71,Persistence:76,Recency:90,'Data-quality risk':86},
+    why:'Large sustained departure on a recent, high-reach measure aligned to a refresh boundary — top of queue.' },
+  { id:'ANM-0145', family:'Missingness', title:'Place-of-service missing 2% → 14.8% at refresh boundary',
+    summary:'POS field missingness jumps sharply at the v2026.06 boundary; POS-dependent detectors are withheld.',
+    measure:'POS field completeness', segment:'Cohort-wide', period:'2026-06 refresh',
+    magnitude:'+12.8 pts', reach:'POS-dependent detectors', confidence:'High', persistence:'2 periods', dqrisk:'Confirmed data issue',
+    priority:84, status:'Submitted for review', timing:'Introduced by refresh', signals:3, dqi:true,
+    score:{Magnitude:80,Confidence:85,Reach:64,Persistence:60,Recency:88,'Data-quality risk':94},
+    why:'Refresh-boundary field failure that quarantines downstream detectors — high data-quality risk.' },
+  { id:'ANM-0147', family:'Distribution shift', title:'Overlapping enrollment inflates member-months +2.6%',
+    summary:'Eligibility restatement created overlapping enrollment segments, inflating member-months and deflating every per-member rate ≈2.5%.',
+    measure:'Member-months (denominator)', segment:'Cohort-wide', period:'2026-06 refresh',
+    magnitude:'+2.6%', reach:'All per-member rates', confidence:'High', persistence:'1 period', dqrisk:'Likely data issue',
+    priority:74, status:'New', timing:'Introduced by refresh', signals:2, dqi:true,
+    score:{Magnitude:52,Confidence:80,Reach:88,Persistence:40,Recency:86,'Data-quality risk':78},
+    why:'Denominator defect with cohort-wide reach — deflates every rate silently.' },
+  { id:'ANM-0139', family:'Distribution shift', title:'65+ share 36.5% → 41.2% at release boundary',
+    summary:'Age-band composition shifts at the release boundary; suspected backfill / source-composition artifact.',
+    measure:'Age-band mix', segment:'Cohort-wide', period:'2026-06 refresh',
+    magnitude:'+4.7 pts', reach:'Composition', confidence:'Moderate', persistence:'1 period', dqrisk:'Suspected data issue',
+    priority:71, status:'New', timing:'Newly detected', signals:2, dqi:true,
+    score:{Magnitude:58,Confidence:62,Reach:70,Persistence:44,Recency:85,'Data-quality risk':72} },
+  { id:'ANM-0136', family:'Relationship change', title:'Pharmacy +9.2% vs stable medical',
+    summary:'Pharmacy claims rise against stable medical volume, coinciding with new submitter onboarding — possible duplicate/overlapping Rx feed.',
+    measure:'Rx : medical ratio', segment:'Cohort-wide', period:'2026-04 → 2026-05',
+    magnitude:'+9.2%', reach:'Pharmacy measures', confidence:'Moderate', persistence:'2 periods', dqrisk:'Suspected data issue',
+    priority:66, status:'New', timing:'Newly occurring', signals:2, dqi:true,
+    score:{Magnitude:62,Confidence:60,Reach:55,Persistence:58,Recency:80,'Data-quality risk':64} },
+  { id:'ANM-0131', family:'Concentration', title:'Top-10 provider share 18.2% → 31.0%',
+    summary:'Provider concentration rises sharply — suspected silent loss of smaller sources (market consolidation is the rule-out).',
+    measure:'Top-10 provider share', segment:'Provider mix', period:'2026-01 → 2026-04',
+    magnitude:'+12.8 pts', reach:'Provider-weighted measures', confidence:'Moderate', persistence:'Recurring', dqrisk:'Suspected data issue',
+    priority:63, status:'Reviewed', timing:'Recurring', signals:3, dqi:true,
+    score:{Magnitude:66,Confidence:58,Reach:52,Persistence:70,Recency:60,'Data-quality risk':66} },
+  { id:'ANM-0149', family:'Relationship change', title:'Reversals stopped arriving from submitter S-217',
+    summary:'Adjustment/reversal records ceased from one submitter; facility paid amounts overstated ≈0.8% while volumes look normal.',
+    measure:'Paid amount (facility)', segment:'Submitter S-217', period:'2026-03 → 2026-05',
+    magnitude:'+0.8%', reach:'Cost measures', confidence:'Moderate', persistence:'3 periods', dqrisk:'Suspected data issue',
+    priority:58, status:'New', timing:'Newly occurring', signals:2, dqi:true,
+    score:{Magnitude:40,Confidence:56,Reach:44,Persistence:66,Recency:78,'Data-quality risk':60} },
+  { id:'ANM-0146', inv:'INV-2026-043', family:'Code emergence/dropout', title:'HF capture −3.4% after ICD-10 code-list drop',
+    summary:'FY2026 ICD-10 update dropped I50.8x from managed HF code list CL-HF-v12; HF capture falls at the code-effective boundary. Remedy is a code-list update, not a vendor escalation.',
+    measure:'HF cohort capture', segment:'HF sub-cohort', period:'2026-04 (code boundary)',
+    magnitude:'−3.4%', reach:'HF studies', confidence:'High', persistence:'1 period', dqrisk:'Expected/explainable',
+    priority:52, status:'Reviewed', timing:'Newly detected', signals:2, dqi:false, origin:'reported-by-study-team',
+    score:{Magnitude:44,Confidence:78,Reach:40,Persistence:38,Recency:70,'Data-quality risk':30},
+    why:'Explainable terminology boundary; reported by study team ST-198 — internal remedy path.' },
+  { id:'ANM-0118', inv:'INV-2026-038', family:'Provider/source coverage', title:'Mountain-region gap improving but not resolved',
+    summary:'Mountain-region coverage gap improving across releases (−19% → −6% → −3.1%) but resolution criteria not yet met.',
+    measure:'Regional coverage', segment:'Mountain region', period:'2025-12 → 2026-04',
+    magnitude:'−3.1%', reach:'Regional measures', confidence:'Moderate', persistence:'Recurring', dqrisk:'Likely data issue',
+    priority:41, status:'Monitoring', timing:'Recurring', signals:2, dqi:true,
+    score:{Magnitude:34,Confidence:56,Reach:38,Persistence:64,Recency:48,'Data-quality risk':44},
+    report:'REP-2026-038', ticket:'VND-2025-009' },
+];
+
+const CLAIMS_RELEASES = [
+  { v:'v2026.03', verdict:'Held', note:'Validation failures — held 6 days', by:'M. Okafor', ts:'2026-03-04' },
+  { v:'v2026.04', verdict:'Accept with restrictions', note:'Mountain-region coverage restriction', by:'M. Okafor', ts:'2026-04-03' },
+  { v:'v2026.05', verdict:'Accepted', note:'No restrictions', by:'Dr. L. Ferreira', ts:'2026-05-05' },
+  { v:'v2026.06', verdict:'Accept with restrictions', note:'POS exclusion; utilization provisional', by:'M. Okafor', ts:'2026-06-04' },
+  { v:'v2026.07', verdict:'Pending', note:'Recommendation: Accept with restrictions', by:'—', ts:'—' },
+];
+
+const CLAIMS_STUDIES = [
+  { id:'ST-204', name:'GLP-1 adherence & CV outcomes', measures:'Outpatient utilization; adherence', findings:['ANM-0142'], rec:'Pause', decision:'Pause', by:'Joint · 2026-06-06' },
+  { id:'ST-211', name:'Site-of-care economics', measures:'POS-based setting mix', findings:['ANM-0145'], rec:'Pause', decision:'Pause', by:'Joint · 2026-06-05' },
+  { id:'ST-198', name:'HF readmission burden', measures:'HF capture; outpatient utilization', findings:['ANM-0142','ANM-0146'], rec:'Proceed with caveats', decision:'Pending', by:'—' },
+  { id:'ST-186', name:'T2D complication incidence', measures:'Per-member incidence rates', findings:['ANM-0147'], rec:'Proceed with caveats', decision:'Proceed with caveats', by:'Joint · 2026-06-08' },
+];
+
+const CLAIMS_TICKETS = [
+  { id:'VND-2026-017', finding:'ANM-0142', title:'Outpatient feed coverage loss (2 provider groups)', status:'Remediation in progress', sla:'On track', opened:'2026-06-05', verify:'2 consecutive in-range releases + roster restoration confirmed', verState:'Pending — 0 of 2', locked:true },
+  { id:'VND-2026-018', finding:'ANM-0145', title:'POS field missingness at refresh boundary', status:'RCA', sla:'At risk', opened:'2026-06-05', verify:'POS completeness ≥98% for 2 consecutive releases', verState:'Pending — 0 of 2', locked:true },
+  { id:'VND-2025-009', finding:'ANM-0118', title:'Mountain-region source coverage gap', status:'Verification pending', sla:'Met', opened:'2025-12-11', verify:'2 consecutive in-range releases', verState:'Pending — 1 of 2 met', locked:true },
+];
+
+const CLAIMS_BIAS = [
+  { measure:'Outpatient utilization', dir:'Underestimated', mag:'15–20% (affected divisions) · 8–10% cohort-wide', strata:'South Atlantic, East North Central · 2026-02→04', driver:'ANM-0142' },
+  { measure:'Cost PPPM', dir:'Underestimated', mag:'6–9%', strata:'Affected divisions · 2026-02→04', driver:'ANM-0142' },
+  { measure:'Per-member rates (all)', dir:'Underestimated', mag:'≈2.5%', strata:'Cohort-wide · 2026-06', driver:'ANM-0147' },
+  { measure:'HF cohort capture', dir:'Underestimated', mag:'−3.4%', strata:'HF sub-cohort · 2026-04', driver:'ANM-0146' },
+  { measure:'Pharmacy utilization', dir:'Unaffected — verified by checks', dirType:'ok', mag:'—', strata:'Cohort-wide', driver:'ANM-0142 checks' },
+  { measure:'Enrollment counts', dir:'Unaffected — verified by checks', dirType:'ok', mag:'—', strata:'Cohort-wide', driver:'ANM-0142 checks' },
+];
+
+/* ---------- INVESTIGATION: ANM-0142 (fully developed, spec §9) ---------- */
+const CLAIMS_INV = {
+  developed:true,
+  id:'INV-2026-041', finding:'ANM-0142', origin:'scan', owner:'M. Okafor', opened:'2026-06-05',
+  step:2, // 0 Evidence,1 Hyp,2 Disposition (current before submit); advances on submit/approve
+  submitted:false, approved:false, reportVersion:null,
+  disposition:null, causes:[],
+  hypotheses:[
+    { id:'H1', cls:'Provider-coverage loss', conf:4, action:'accepted',
+      stmt:'The shortfall is consistent with loss of two provider groups from the outpatient feed at the v2026.06 boundary.',
+      support:['Roster diff shows 2 exited groups (−1,187 NPIs, −13.9%)','Excluding their attributed patients, residual cohort is in expected range','Onset aligns exactly to refresh boundary'],
+      contra:['Some residual softness in a third division (small)'],
+      missing:['Vendor confirmation of feed change'] },
+    { id:'H2', cls:'Claims runout / immaturity', conf:2, action:'rejected',
+      stmt:'Recent-period shortfall could reflect incomplete claims runout rather than true loss.',
+      support:['May-26 is at ~78% runout'],
+      contra:['Anomaly persists in mature months (Feb past 95% completeness horizon)','Depth of shortfall exceeds any plausible runout effect'],
+      missing:[] },
+    { id:'H3', cls:'Rule-out: genuine real-world change', conf:1, action:'rejected', ruleout:true,
+      stmt:'The decline could reflect a real drop in care-seeking rather than a data issue.',
+      support:['None material'],
+      contra:['87% of patients with zero outpatient claims kept filling prescriptions on schedule','Pharmacy and enrollment stable','Change is geographically localized to specific feeds, not diffuse'],
+      missing:[] },
+    { id:'H4', cls:'Cohort composition', conf:1, action:'rejected',
+      stmt:'A shift in cohort composition could mechanically lower the rate.',
+      support:['—'],
+      contra:['Rate is per-1,000 normalized','Demographics stable across the window'],
+      missing:[] },
+  ],
+  checks:[
+    { name:'Provider roster diff (v2026.05 → v2026.06)', params:'domain=outpatient; key=NPI', result:'2 groups exited: Coastal Care Partners, Lakeshore Medical Group (−1,187 NPIs, −13.9%)', effect:'Strengthens H1', run:true },
+    { name:'Exited-provider exclusion recompute', params:'exclude attributed patients; recompute rate/1,000', result:'Residual cohort in expected range; exited groups ≈66% of shortfall', effect:'Strengthens H1; weakens H3/H4', run:true },
+    { name:'Incomplete-month exclusion', params:'drop 2026-05 (78% runout)', result:'Feb–Apr shortfall unchanged', effect:'Weakens H2', run:true },
+    { name:'Service-date vs adjudication-date', params:'reindex on service date', result:'Onset unchanged; not an adjudication-lag artifact', effect:'Weakens H2', run:false },
+    { name:'Rx persistence among zero-outpatient patients', params:'cohort=0 OP claims 2026-02→04', result:'87% continued scheduled fills', effect:'Weakens H3', run:false },
+    { name:'Continuously-enrolled recompute', params:'restrict to CE 24m', result:'Shortfall persists; not enrollment churn', effect:'Weakens H4', run:false },
+  ],
+  series:{ // monthly Jan'24–May'26, observed vs expected band
+    labels:['J24','F','M','A','M','J','J','A','S','O','N','D','J25','F','M','A','M','J','J','A','S','O','N','D','J26','F','M','A','M'],
+    exp:[430,428,432,435,433,431,429,434,436,433,430,432,435,434,436,438,437,435,433,436,438,435,433,436,439,438,440,441,439],
+    lo:[408,406,410,413,411,409,407,412,414,411,408,410,413,412,414,416,415,413,411,414,416,413,411,414,417,416,418,419,417],
+    hi:[452,450,454,457,455,453,451,456,458,455,452,454,457,456,458,460,459,457,455,458,460,457,455,458,461,460,462,463,461],
+    obs:[431,427,433,436,434,430,428,435,437,434,431,433,436,435,437,439,438,436,434,437,439,436,434,437,440,352,349,347,305],
+    onset:25, // Feb'26 index
+    incompleteFrom:28, // May'26
+  },
+  contribution:[
+    { dim:'South Atlantic', share:-46.2, flag:'unusual' },
+    { dim:'East North Central', share:-31.4, flag:'unusual' },
+    { dim:'Age 45–64', share:-12.1, flag:'expected' },
+    { dim:'Commercial payer', share:-6.8, flag:'expected' },
+    { dim:'Other divisions', share:-3.5, flag:'expected' },
+  ],
+  dqTests:[
+    ['Claims runout','Partial','May-26 immature; excluded from baseline'],
+    ['Coverage loss','Fail','2 provider groups exited outpatient feed'],
+    ['Enrollment integrity','Pass','Continuously-enrolled recompute stable'],
+    ['Missingness','Pass','No POS dependency for this measure'],
+    ['Code changes','Pass','No terminology boundary in window'],
+    ['Duplicates','Pass','No duplication signature'],
+    ['Refresh boundary','Fail','Onset aligns to v2026.06 boundary'],
+    ['Pipeline processing','Pass','No mapping/ETL anomaly detected'],
+  ],
+  rowAccess:[], // populated on drill-down toggle
+};
+
+/* ---------- AUDIT LOG (append-only) ---------- */
+let AUDIT_SEQ = 7738;
+const CLAIMS_AUDIT = [
+  { ts:'2026-06-05 08:02', actor:'System · detector v3.2', act:'Scan SCN-2026-06 consolidated 4 signals into ANM-0142; priority computed 87.', cat:'teal' },
+  { ts:'2026-06-05 08:05', actor:'System · detector v3.2', act:'POS-dependent detectors withheld (Results withheld) due to ANM-0145.', cat:'amber' },
+  { ts:'2026-06-05 09:14', actor:'M. Okafor · Analyst', act:'Opened investigation INV-2026-041 from scan finding ANM-0142.', cat:'teal' },
+  { ts:'2026-06-05 10:22', actor:'M. Okafor · Analyst', act:'Ran check: Provider roster diff — 2 groups exited (−1,187 NPIs).', cat:'teal' },
+  { ts:'2026-06-05 10:41', actor:'M. Okafor · Analyst', act:'Ran check: Exited-provider exclusion recompute — residual in range.', cat:'teal' },
+  { ts:'2026-06-05 11:03', actor:'M. Okafor · Analyst', act:'Accepted H1 (conf 4/5); rejected H2, H3 (rule-out), H4.', cat:'teal' },
+];
+
+/* ---------- claims meta: pre-scan summary + descriptive profile + cohort definition ---------- */
+Object.assign(CLAIMS_DATA, {
+  summary:{
+    domains:[['Medical claims','Claim lines','3.9M','2019-01→2026-05'],['Pharmacy claims','Rx fills','1.42M','2019-01→2026-05'],['Enrollment','Member-months','1.08M','continuous spans'],['Provider registry','Active NPIs','12,847','in window']],
+    entities:[['Patients (cohort)','48,213'],['Patients (source)','2.1M'],['Providers','12,847'],['Refresh cadence','Monthly']],
+    completeness:[['Diagnosis code',99.4,'green'],['Place of service',85.2,'amber'],['Paid amount',99.1,'green'],['Provider NPI',98.7,'green'],['Service date',99.9,'green']],
+    fields:[['Medical claims','claim_id · dx (ICD-10) · POS · paid_amt · service_date · NPI','structured','98%+ (POS 85%)'],['Pharmacy','ndc · fill_date · days_supply · qty','structured','99%'],['Enrollment','member_id · span_start · span_end · plan','structured','99%'],['Provider','npi · taxonomy · group_id · region','reference','99%']],
+    readiness:[['Ingestion','Pass','v2026.06 loaded'],['Schema validation','Pass','all rules cleared'],['Terminology mapping','Partial','CL-HF-v12 code drop flagged'],['Cohort build','Pass','C-104 v7 · 48,213'],['Deduplication','Pass','0.3% dup signature'],['Runout assessment','Partial','2026-05 at 78%']],
+    scanConfig:{suite:'v3.2',baseline:'24-month seasonal',fdr:'BH q=0.05'}
+  },
+  profile:{
+    kpis:[['48,213','Patients'],['3.9M','Claims (window)'],['12,847','Providers'],['97.5%','Completeness (mature)']],
+    demo:[['Age 45–64',42],['Age 65+',41],['Age 18–44',17],['Commercial',48],['Medicare Adv.',39],['Managed Medicaid',13]],
+    note:'The Feb–Apr 2026 out-of-range markers relate to ANM-0142 (outpatient shortfall). May-26 is hatched (78% runout).',
+    seriesRef:'inv', unit:'Observed outpatient / 1,000', relFinding:'ANM-0142'
+  },
+  cohortDef:{ incl:'≥1 qualifying cardiometabolic dx (T2D, HF, ASCVD) 2024-01→; continuous enrollment ≥12m.', excl:'hospice; incomplete demographic key.', codes:['CL-T2D-v9','CL-HF-v12','CL-ASCVD-v6'], approval:'COH-APR-2025-11' }
+});
+
+/* ============================================================
+   SECOND DATASET — Vantage Ambulatory EHR Network (EHR-derived)
+   Starts UN-scanned so the user experiences configure → run scan.
+   ============================================================ */
+const EHR_DATA = {
+  dataset:{ id:'EHR-207', name:'Vantage Ambulatory EHR Network', vendor:'Vantage Health Informatics, Inc.',
+    domains:'Encounters · diagnoses · labs · vitals · medication orders · demographics', obs:'2020-01 → 2026-06',
+    window:'2023-07 → 2026-06', geo:'US · 14 health systems (ambulatory)', cadence:'Weekly extract → monthly release',
+    working:'v2026.06', incoming:'v2026.07', latestComplete:'2026-05', runout:'2026-06 at ~85% maturity', dict:'EHR-DD v2.1',
+    limits:'Site-level heterogeneity; lab units vary by source system; free-text/notes not analyzed.' },
+  cohort:{ id:'E-220', name:'CKD Progression Cohort', version:'v3', patients:62400, approval:'COH-APR-2026-03', window:'2023-07 → 2026-06' },
+  scan:{ id:'SCN-EHR-2026-07', suite:'v2.4' },
+  families:[['Lab completeness','Result-missing / LOINC mapping gaps'],['Lab unit & value plausibility','Unit inconsistency / implausible values'],['Encounter volume','Site feed loss / EHR migration'],['Vitals plausibility','Implausible BP / height / weight'],['Terminology drift','ICD / RxNorm changes'],['Medication order integrity','Duplication after interface change'],['Timestamp integrity','Timezone / datetime regressions'],['Demographic completeness','Race / ethnicity / DOB gaps'],['Site/source coverage','Health-system roster deltas'],['Result latency','Immaturity of recent periods']],
+  fitness:{ working:'Accept with restrictions', workingNote:'A1c withheld; encounter provisional for migrating site', incoming:'Decision pending', incomingRec:'Accept with restrictions' },
+  cohortDef:{ incl:'≥2 eGFR <60 (CKD 3–4) ≥90 days apart, 2023-07→; ≥1 ambulatory encounter/yr.', excl:'ESRD/dialysis at baseline; kidney transplant.', codes:['CL-CKD-v4','LOINC-eGFR-v2','RxNorm-RASi-v3'], approval:'COH-APR-2026-03' },
+  egfrSeries:{ labels:['J24','A','S','O','N','D','J25','F','M','A','M','J','J','A','S','O','N','D','J26','F','M','A','M','J'],
+    exp:Array(24).fill(52), lo:Array(24).fill(48), hi:Array(24).fill(56),
+    obs:[52,51,53,52,51,52,53,52,51,52,53,52,51,52,53,52,51,52,53,52,52,69,71,70], onset:21, incompleteFrom:23 },
+  profile:{
+    kpis:[['62,400','Patients'],['4.8M','Encounters'],['11.3M','Lab results'],['94.1%','eGFR completeness']],
+    demo:[['Age 65+',44],['Age 45–64',39],['Age 18–44',17],['CKD stage 3a',41],['CKD stage 3b',34],['CKD stage 4',25]],
+    note:'The 2026-04→06 out-of-range markers relate to EHR-0207 (creatinine unit remap inflating eGFR). 2026-06 is hatched (85% maturity).',
+    seriesRef:'egfr', unit:'Mean eGFR (mL/min/1.73m²)', relFinding:'EHR-0207'
+  },
+  summary:{
+    domains:[['Encounters','Visits','4.8M','2020-01→2026-06'],['Diagnoses / problem list','Coded problems','9.6M','ICD-10-CM'],['Labs','Results','11.3M','LOINC-coded'],['Vitals','Measurements','8.1M','BP/HR/wt/ht'],['Medication orders','Orders','3.2M','RxNorm'],['Demographics','Patients','62,400','—']],
+    entities:[['Patients (cohort)','62,400'],['Source health systems','14'],['Lab results','11.3M'],['Extract cadence','Weekly → monthly']],
+    completeness:[['eGFR / creatinine',94.1,'green'],['HbA1c',81.6,'amber'],['Blood pressure',96.8,'green'],['Race / ethnicity',78.9,'amber'],['Encounter datetime',99.7,'green']],
+    fields:[['Encounters','encounter_id · datetime · type · site_id','structured','99.7%'],['Labs','loinc · value · unit · ref_range · collected_dt','structured','94% (A1c 82%)'],['Vitals','systolic · diastolic · hr · weight · height','structured','96.8%'],['Diagnoses','icd10 · onset_date · status','coded','98%'],['Medications','rxnorm · order_dt · sig · route','coded','97%'],['Demographics','dob · sex · race · ethnicity · zip3','structured','race 79%']],
+    readiness:[['Ingestion','Pass','weekly extracts merged → v2026.07'],['Schema validation','Pass','13 of 14 sites conform'],['Terminology mapping','Partial','LOINC unit field dropped for 1 source'],['Cohort build','Pass','E-220 v3 · 62,400'],['Deduplication','Partial','med-order duplication +0.8% at one site'],['Unit normalization','Fail','creatinine unit not normalized (Northlake feed)']],
+    scanConfig:{suite:'v2.4',baseline:'24-month + within-patient',fdr:'BH q=0.05'}
+  }
+};
+const EHR_FINDINGS = [
+  { id:'EHR-0207', inv:'INV-EHR-014', family:'Lab unit & value plausibility', title:'Serum creatinine unit remap inflates eGFR — CKD stage misclassified',
+    summary:'Creatinine from Northlake Health System drops ~88× at the 2026-04 lab-feed remap (µmol/L mishandled as mg/dL), inflating eGFR 15–25 mL/min and misclassifying ~1,900 patients to a milder CKD stage.',
+    measure:'eGFR (mean) / creatinine', segment:'Northlake Health System', period:'2026-04 → 2026-06',
+    magnitude:'+18 mL/min eGFR', reach:'~18% of cohort', confidence:'High', persistence:'3 periods', dqrisk:'Confirmed data issue',
+    priority:89, status:'Under investigation', timing:'Introduced by refresh', signals:4, dqi:true,
+    score:{Magnitude:86,Confidence:88,Reach:70,Persistence:74,Recency:90,'Data-quality risk':92},
+    why:'Confirmed single-source unit defect misclassifying clinical staging on a recent, high-reach measure — top of queue.' },
+  { id:'EHR-0205', family:'Encounter volume', title:'Encounter volume −34% after Cascade Medical Group EHR migration',
+    summary:'Ambulatory encounter counts fall sharply after an Epic→Cerner cutover at one health system; backfill pending.',
+    measure:'Encounters / patient', segment:'Cascade Medical Group', period:'2026-05 → 2026-06',
+    magnitude:'−34%', reach:'Utilization measures', confidence:'High', persistence:'2 periods', dqrisk:'Likely data issue',
+    priority:82, status:'New', timing:'Introduced by refresh', signals:3, dqi:true,
+    score:{Magnitude:78,Confidence:80,Reach:70,Persistence:55,Recency:88,'Data-quality risk':82},
+    why:'Site EHR migration produces a large recent utilization gap pending backfill.' },
+  { id:'EHR-0203', family:'Lab completeness', title:'HbA1c results missing 4% → 19% after lab-system upgrade',
+    summary:'A1c result completeness drops at a LOINC mapping boundary; A1c-dependent detectors are withheld.',
+    measure:'HbA1c completeness', segment:'Cohort-wide', period:'2026-06 refresh',
+    magnitude:'+15 pts missing', reach:'A1c-dependent detectors', confidence:'High', persistence:'1 period', dqrisk:'Confirmed data issue',
+    priority:79, status:'Submitted for review', timing:'Introduced by refresh', signals:3, dqi:true,
+    score:{Magnitude:70,Confidence:82,Reach:66,Persistence:58,Recency:85,'Data-quality risk':88},
+    why:'Refresh-boundary mapping gap that quarantines A1c detectors.' },
+  { id:'EHR-0209', family:'Vitals plausibility', title:'Systolic BP implausible values spike to 3.1% at one site',
+    summary:'Systolic BP of 0 and >300 appear after a device-integration change — implausible vitals.',
+    measure:'Systolic BP plausibility', segment:'Riverside Clinics', period:'2026-05 → 2026-06',
+    magnitude:'3.1% implausible', reach:'BP measures', confidence:'Moderate', persistence:'2 periods', dqrisk:'Likely data issue',
+    priority:76, status:'New', timing:'Newly occurring', signals:2, dqi:true,
+    score:{Magnitude:64,Confidence:72,Reach:48,Persistence:50,Recency:80,'Data-quality risk':78} },
+  { id:'EHR-0211', family:'Medication order integrity', title:'Duplicate medication orders +6.8% after e-prescribing change',
+    summary:'Medication orders show duplication after an e-prescribing interface change — possible double-posting.',
+    measure:'Med-order duplication', segment:'Cohort-wide', period:'2026-05 → 2026-06',
+    magnitude:'+6.8%', reach:'Medication measures', confidence:'Moderate', persistence:'2 periods', dqrisk:'Suspected data issue',
+    priority:68, status:'New', timing:'Newly occurring', signals:2, dqi:true,
+    score:{Magnitude:58,Confidence:64,Reach:52,Persistence:56,Recency:78,'Data-quality risk':66} },
+  { id:'EHR-0208', family:'Timestamp integrity', title:'Encounter timestamps shifted +5h for a subset (timezone)',
+    summary:'A subset of encounter datetimes shift by 5 hours — UTC vs local handling regression.',
+    measure:'Encounter datetime', segment:'Subset (2 sites)', period:'2026-06 refresh',
+    magnitude:'+5h shift', reach:'Time-based measures', confidence:'Moderate', persistence:'1 period', dqrisk:'Suspected data issue',
+    priority:61, status:'New', timing:'Newly detected', signals:2, dqi:true,
+    score:{Magnitude:50,Confidence:70,Reach:44,Persistence:48,Recency:74,'Data-quality risk':62} },
+  { id:'EHR-0201', family:'Demographic completeness', title:'Race/ethnicity completeness 88% → 71% at two sites',
+    summary:'Race/ethnicity capture drops after an intake-form change at two sites.',
+    measure:'Race/ethnicity completeness', segment:'Two sites', period:'2026-04 → 2026-06',
+    magnitude:'−17 pts', reach:'Equity-strata measures', confidence:'Moderate', persistence:'Recurring', dqrisk:'Likely data issue',
+    priority:54, status:'Reviewed', timing:'Newly detected', signals:2, dqi:true,
+    score:{Magnitude:46,Confidence:66,Reach:40,Persistence:44,Recency:64,'Data-quality risk':56} },
+  { id:'EHR-0198', inv:'INV-EHR-006', family:'Site/source coverage', title:'Southwest site coverage gap improving but not resolved',
+    summary:'Southwest health-system coverage gap narrowing across releases (−22% → −9% → −4%) but resolution criteria not met.',
+    measure:'Regional coverage', segment:'Southwest sites', period:'2025-12 → 2026-06',
+    magnitude:'−4%', reach:'Regional measures', confidence:'Moderate', persistence:'Recurring', dqrisk:'Likely data issue',
+    priority:43, status:'Monitoring', timing:'Recurring', signals:2, dqi:true,
+    score:{Magnitude:36,Confidence:58,Reach:40,Persistence:66,Recency:50,'Data-quality risk':46},
+    report:'REP-EHR-006', ticket:'VEN-2025-020' },
+];
+const EHR_RELEASES = [
+  { v:'v2026.03', verdict:'Accepted', note:'No restrictions', by:'A. Reyes', ts:'2026-03-06' },
+  { v:'v2026.04', verdict:'Accept with restrictions', note:'Southwest coverage restriction', by:'A. Reyes', ts:'2026-04-07' },
+  { v:'v2026.05', verdict:'Accepted', note:'No restrictions', by:'Dr. L. Ferreira', ts:'2026-05-06' },
+  { v:'v2026.06', verdict:'Accept with restrictions', note:'A1c withheld; encounter provisional (migration)', by:'A. Reyes', ts:'2026-06-08' },
+  { v:'v2026.07', verdict:'Pending', note:'Recommendation: Accept with restrictions', by:'—', ts:'—' },
+];
+const EHR_STUDIES = [
+  { id:'SR-118', name:'CKD progression & RAS-inhibitor effectiveness', measures:'eGFR trajectory; creatinine', findings:['EHR-0207'], rec:'Pause', decision:'Pause', by:'Joint · 2026-07-02', biasStatement:'eGFR overestimated 15–25 mL/min for Northlake-sourced patients; CKD staging unreliable this release.' },
+  { id:'SR-125', name:'Diabetes control quality (A1c)', measures:'HbA1c control', findings:['EHR-0203'], rec:'Pause', decision:'Pause', by:'Joint · 2026-07-02', biasStatement:'A1c results withheld this release (LOINC mapping gap).' },
+  { id:'SR-131', name:'Hypertension control', measures:'Blood pressure', findings:['EHR-0209'], rec:'Proceed with caveats', decision:'Pending', by:'—', biasStatement:'Exclude implausible BP values from Riverside Clinics (device error).' },
+  { id:'SR-140', name:'Health-equity disparities', measures:'Outcomes by race/ethnicity', findings:['EHR-0201'], rec:'Proceed with caveats', decision:'Proceed with caveats', by:'Joint · 2026-07-04', biasStatement:'Race/ethnicity completeness reduced at two sites; strata may be biased.' },
+];
+const EHR_TICKETS = [
+  { id:'VEN-2026-031', finding:'EHR-0207', title:'Serum creatinine unit remap (Northlake feed)', status:'RCA', sla:'On track', opened:'2026-07-01', verify:'Unit conversion corrected + 2 consecutive in-range releases', verState:'Pending — 0 of 2', locked:true },
+  { id:'VEN-2026-032', finding:'EHR-0203', title:'HbA1c LOINC mapping gap', status:'Remediation in progress', sla:'At risk', opened:'2026-07-01', verify:'A1c completeness ≥97% for 2 consecutive releases', verState:'Pending — 0 of 2', locked:true },
+  { id:'VEN-2025-020', finding:'EHR-0198', title:'Southwest site coverage gap', status:'Verification pending', sla:'Met', opened:'2025-12-15', verify:'2 consecutive in-range releases', verState:'Pending — 1 of 2 met', locked:true },
+];
+const EHR_BIAS = [
+  { measure:'eGFR / CKD staging', dir:'Overestimated', mag:'+15–25 mL/min · ~1,900 misclassified', strata:'Northlake · 2026-04→06', driver:'EHR-0207' },
+  { measure:'Serum creatinine', dir:'Underestimated', mag:'≈98% (unit error)', strata:'Northlake · 2026-04→06', driver:'EHR-0207' },
+  { measure:'HbA1c control', dir:'Withheld', mag:'—', strata:'Cohort-wide · 2026-06', driver:'EHR-0203' },
+  { measure:'Encounter counts', dir:'Underestimated', mag:'−34% (migrating site)', strata:'Cascade · 2026-05→06', driver:'EHR-0205' },
+  { measure:'ACR (albumin/creatinine)', dir:'Unaffected — verified by checks', dirType:'ok', mag:'—', strata:'Cohort-wide', driver:'EHR-0207 checks' },
+  { measure:'Blood pressure (valid)', dir:'Unaffected — verified by checks', dirType:'ok', mag:'—', strata:'Cohort-wide', driver:'EHR-0209 checks' },
+];
+const EHR_AUDIT = [
+  { ts:'2026-07-28 22:10', actor:'System · pipeline', act:'Ingested v2026.07 weekly extracts from 13 of 14 source systems.', cat:'teal' },
+  { ts:'2026-07-28 22:14', actor:'System · pipeline', act:'Schema validation passed; unit-normalization check FAILED for Northlake creatinine feed.', cat:'amber' },
+];
+
+/* ---------- dataset registry + active-dataset bindings ---------- */
+const DATASETS = {
+  'DSN-114':{ scanned:true,  meta:CLAIMS_DATA, findings:CLAIMS_FINDINGS, releases:CLAIMS_RELEASES, studies:CLAIMS_STUDIES, tickets:CLAIMS_TICKETS, bias:CLAIMS_BIAS, inv:CLAIMS_INV, audit:CLAIMS_AUDIT },
+  'EHR-207':{ scanned:false, meta:EHR_DATA,    findings:EHR_FINDINGS,    releases:EHR_RELEASES,    studies:EHR_STUDIES,    tickets:EHR_TICKETS,    bias:EHR_BIAS,    inv:null,       audit:EHR_AUDIT },
+};
+let DATA, FINDINGS, RELEASES, STUDIES, TICKETS, BIAS, INV, AUDIT, DSB;
+function activateDataset(id){ const b=DATASETS[id]; DSB=b; DATA=b.meta; FINDINGS=b.findings; RELEASES=b.releases; STUDIES=b.studies; TICKETS=b.tickets; BIAS=b.bias; INV=b.inv; AUDIT=b.audit; state.dataset=id; }
+activateDataset('DSN-114');
+
+/* ---------- per-dataset monitoring config ---------- */
+Object.assign(CLAIMS_DATA, { monitoring:{
+  monitored:[{id:'ANM-0118', state:'Monitor until resolved', latest:'Improving', latestChip:'amber', criteria:'In expected range 2 consecutive releases AND vendor remediation confirmed'}],
+  timelineId:'ANM-0118', timelineNote:'Gap narrowed −19% → −6% → −3.1%, but only <b>1 of 2</b> required in-range releases achieved and vendor remediation (VND-2025-009) is verification-pending. Classification: <b>Improving</b>, not Resolved.',
+  timelineSeries:{labels:['Dec25','Jan26','Feb','Mar','Apr'],exp:Array(5).fill(100),lo:Array(5).fill(97),hi:Array(5).fill(103),obs:[81,86,92,94,96.9],onset:0,incompleteFrom:null},
+  configId:'ANM-0142', configCriteria:['2 consecutive in-range releases','Provider roster restoration confirmed by vendor','Residual-cohort recompute in range']
+}});
+Object.assign(EHR_DATA, { monitoring:{
+  monitored:[{id:'EHR-0198', state:'Monitor until resolved', latest:'Improving', latestChip:'amber', criteria:'In expected range 2 consecutive releases AND vendor remediation confirmed'}],
+  timelineId:'EHR-0198', timelineNote:'Coverage gap narrowed −22% → −9% → −4%, but only <b>1 of 2</b> required in-range releases achieved and vendor remediation (VEN-2025-020) is verification-pending. Classification: <b>Improving</b>, not Resolved.',
+  timelineSeries:{labels:['Dec25','Feb','Apr','Jun'],exp:Array(4).fill(100),lo:Array(4).fill(97),hi:Array(4).fill(103),obs:[78,88,91,96],onset:0,incompleteFrom:null},
+  configId:'EHR-0207', configCriteria:['Unit conversion corrected & backfilled by vendor','Implausible eGFR rate < 0.5% for 2 releases','Paired within-patient recompute in range']
+}});
+
+/* claims per-study bias statements (EHR studies already carry theirs) */
+const CLAIMS_BIAS_STMT={'ST-204':'Outpatient utilization underestimated 8–10% cohort-wide (15–20% in affected divisions), 2026-02→04.','ST-211':'POS-based setting mix withheld this release.','ST-198':'Outpatient utilization provisional; HF capture −3.4% at the code boundary.','ST-186':'Per-member rates deflated ≈2.5% pending denominator fix.'};
+CLAIMS_STUDIES.forEach(s=>{ s.biasStatement = CLAIMS_BIAS_STMT[s.id]||''; });
+
+function auditRef(){ return 'AUD-'+(AUDIT_SEQ++); }
+function logAudit(act, cat='teal', actor){
+  actor = actor || (state.role==='reviewer'?'Dr. L. Ferreira · Reviewer':state.role==='executive'?'Executive · read-only':'M. Okafor · Analyst');
+  AUDIT.push({ ts:'2026-07-29 '+nowClock(), actor, act, cat });
+}
+let _clk=[9,7];
+function nowClock(){ _clk[1]+=3; if(_clk[1]>=60){_clk[1]-=60;_clk[0]++;} return String(_clk[0]).padStart(2,'0')+':'+String(_clk[1]).padStart(2,'0'); }
+
+/* ============================================================
+   CHART HELPERS (hand-rolled SVG — signature expected-band motif)
+   ============================================================ */
+function expectedBandChart(s, opts={}){
+  const W=opts.w||680, H=opts.h||230, pl=42, pr=14, pt=14, pb=26;
+  const n=s.obs.length;
+  const all=[...s.hi,...s.obs,...s.lo];
+  const min=Math.min(...all)*0.96, max=Math.max(...all)*1.02;
+  const x=i=> pl + i*(W-pl-pr)/(n-1);
+  const y=v=> pt + (max-v)/(max-min)*(H-pt-pb);
+  const line=(arr)=>arr.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1)).join(' ');
+  // band area
+  const band=[...s.hi.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1)),
+              ...s.lo.map((v,i)=>'L'+x(n-1-i).toFixed(1)+','+y(s.lo[n-1-i]).toFixed(1))].join(' ')+' Z';
+  let dots='';
+  s.obs.forEach((v,i)=>{ if(v<s.lo[i]||v>s.hi[i]) dots+=`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.4" fill="var(--red)"/>`; });
+  // incomplete hatch
+  let hatch='';
+  if(s.incompleteFrom!=null){
+    const x0=x(s.incompleteFrom-0.5), x1=x(n-1)+6;
+    hatch=`<rect x="${x0.toFixed(1)}" y="${pt}" width="${(x1-x0).toFixed(1)}" height="${H-pt-pb}" fill="url(#hatch)" opacity=".55"/>`;
+  }
+  let onset='';
+  if(s.onset!=null){
+    const ox=x(s.onset);
+    onset=`<line x1="${ox.toFixed(1)}" y1="${pt}" x2="${ox.toFixed(1)}" y2="${H-pb}" stroke="var(--red)" stroke-width="1.2" stroke-dasharray="4 3"/>
+    <text x="${(ox+4).toFixed(1)}" y="${pt+11}" font-size="9.5" fill="var(--red)" font-family="var(--mono)">${s.onsetLabel||'refresh boundary'}</text>`;
+  }
+  // y ticks
+  let yt='';
+  for(let k=0;k<=3;k++){ const v=min+(max-min)*k/3; const yy=y(v); yt+=`<line x1="${pl}" y1="${yy.toFixed(1)}" x2="${W-pr}" y2="${yy.toFixed(1)}" stroke="var(--line)" stroke-width="1"/><text x="${pl-6}" y="${(yy+3).toFixed(1)}" font-size="9" fill="var(--ink-3)" text-anchor="end" font-family="var(--mono)">${Math.round(v)}</text>`; }
+  let xt='';
+  s.labels.forEach((l,i)=>{ if(i%3===0||i===n-1) xt+=`<text x="${x(i).toFixed(1)}" y="${H-8}" font-size="8.5" fill="var(--ink-3)" text-anchor="middle" font-family="var(--mono)">${l}</text>`; });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px" role="img" aria-label="Observed vs expected range">
+    <defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="var(--ink-3)" stroke-width="1"/></pattern></defs>
+    ${yt}${hatch}
+    <path d="${band}" fill="var(--band)" opacity=".75"/>
+    <path d="${line(s.exp)}" fill="none" stroke="var(--band-line)" stroke-width="1.2" stroke-dasharray="3 3"/>
+    ${onset}
+    <path d="${line(s.obs)}" fill="none" stroke="var(--teal)" stroke-width="2"/>
+    ${dots}${xt}
+  </svg>`;
+}
+function hbars(rows, opts={}){ // rows: [label, value, max, colorClass]
+  const max=opts.max||Math.max(...rows.map(r=>Math.abs(r[1])));
+  return `<div style="display:flex;flex-direction:column;gap:8px">`+rows.map(r=>{
+    const pct=Math.min(100,Math.abs(r[1])/max*100);
+    const col=r[3]||'var(--teal)';
+    return `<div style="display:grid;grid-template-columns:150px 1fr 60px;gap:10px;align-items:center;font-size:12px">
+      <div class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r[0]}</div>
+      <div style="height:9px;background:#EEF1F3;border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${col};border-radius:4px"></div></div>
+      <div class="num" style="text-align:right;color:var(--ink-2)">${r[4]||r[1]}</div></div>`;
+  }).join('')+`</div>`;
+}
+function spark(arr,opts={}){
+  const W=opts.w||90,H=opts.h||24; const min=Math.min(...arr),max=Math.max(...arr);
+  const x=i=>i*W/(arr.length-1), y=v=>H-2-((v-min)/((max-min)||1))*(H-4);
+  const d=arr.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><path d="${d}" fill="none" stroke="${opts.color||'var(--teal)'}" stroke-width="1.5"/></svg>`;
+}
+function scoreBars(score){
+  const abbr={Magnitude:'Mag',Confidence:'Conf',Reach:'Reach',Persistence:'Persist',Recency:'Recency','Data-quality risk':'DQ risk'};
+  return `<div class="scorewrap">`+Object.entries(score).map(([k,v])=>{
+    const cls=v>=80?'hi':v>=60?'md':'';
+    return `<div class="sc"><div class="n">${abbr[k]||k}</div><div class="track"><div class="fill ${cls}" style="width:${v}%"></div></div><div class="val">${v}</div></div>`;
+  }).join('')+`</div>`;
+}
+function pips(n){ return `<span class="pips">`+[1,2,3,4,5].map(i=>`<span class="pip ${i<=n?'on':''}"></span>`).join('')+`</span>`; }
+
+/* ============================================================
+   NAV
+   ============================================================ */
+const NAV = [
+  ['DATA SOURCE',[
+    ['source','Data Source & Config','▦'],
+  ]],
+  ['WORKSPACE',[
+    ['overview','Overview','◉'],
+    ['cohort','Cohort Profile','◇'],
+    ['scan-scope','Scan Scope','·',true],
+    ['refreshes','Dataset Refreshes','⟳'],
+  ]],
+  ['FINDINGS',[
+    ['anomalies','DQ Anomalies','▲',false,()=>FINDINGS.filter(f=>['New','Reviewed','Under investigation'].includes(f.status)).length],
+    ['investigations','Investigations','⌕',false,()=>FINDINGS.filter(f=>f.developed||f.status==='Under investigation').length],
+    ['monitoring','Monitoring','◷'],
+  ]],
+  ['GOVERNANCE',[
+    ['study-impact','Study Impact','⚖',false,()=>STUDIES.filter(s=>s.decision==='Pending').length],
+    ['vendor','Vendor Management','⛭',false,()=>TICKETS.filter(t=>t.status!=='Closed').length],
+    ['reports','Reports','▤'],
+  ]],
+];
+
+function renderNav(){
+  return NAV.map(([grp,items])=>`
+    <div class="nav-grp"><div class="lbl">${grp}</div>
+    ${items.map(it=>{
+      const [route,label,ico,sub,badgeFn]=it;
+      const active=state.route===route;
+      const badge=(badgeFn&&DSB.scanned)?badgeFn():0;
+      return `<div class="nav-item ${sub?'sub':''} ${active?'active':''}" onclick="go('${route}')">
+        ${sub?'':'<span class="nav-ico">'+ico+'</span>'}<span>${label}</span>
+        ${badge?`<span class="badge">${badge}</span>`:''}</div>`;
+    }).join('')}</div>`).join('');
+}
+
+/* ============================================================
+   ROUTER
+   ============================================================ */
+function go(route, tab){ state.route=route; state.tab=tab||null; window.scrollTo(0,0); render(); }
+function can(cap){
+  // capability gates
+  if(state.role==='executive') return false;
+  if(cap==='review') return state.role==='reviewer';
+  if(cap==='submit') return state.role==='analyst';
+  return true; // analyst/reviewer general edit
+}
+
+function render(){
+  document.getElementById('root').innerHTML = `
+  <div class="app">
+    <header class="top">
+      <div class="brand"><span class="mk"></span>RWD&nbsp;Sentinel</div>
+      <div class="ctx">
+        <span class="c">Dataset <b>${DATA.dataset.name}</b> <span class="tag">${DATA.dataset.id}</span></span>
+        <span class="c">Release <b class="mono">${DATA.dataset.working}</b></span>
+        <span class="c">Cohort <b>${DATA.cohort.name} ${DATA.cohort.version}</b></span>
+        <span class="c">Latest complete <b class="mono">${DATA.dataset.latestComplete}</b></span>
+        <span class="c"><span class="dot" style="background:${DSB.scanned?'#8FE0A8':'#E9C77E'}"></span>Scan <b>${DSB.scanned?DATA.scan.id+' complete':'not run'}</b></span>
+      </div>
+      <div class="roles">
+        <span style="font-size:11px;opacity:.75">Dataset</span>
+        <select onchange="selectDataset(this.value)" title="Select real-world dataset">
+          ${Object.keys(DATASETS).map(id=>`<option value="${id}" ${state.dataset===id?'selected':''}>${DATASETS[id].meta.dataset.name}</option>`).join('')}
+        </select>
+        <span style="font-size:11px;opacity:.75;margin-left:6px">Role</span>
+        <select onchange="setRole(this.value)">
+          ${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${state.role===k?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+    </header>
+    <nav class="side">${renderNav()}</nav>
+    <main>${screenContent()}</main>
+  </div>`;
+}
+const SCAN_GATED=['overview','anomalies','investigations','investigation','monitoring','refreshes','study-impact','vendor','reports'];
+function screenContent(){
+  const scr=state.route;
+  if(SCAN_GATED.includes(scr) && !DSB.scanned) return scanRequiredPanel();
+  return (SCREENS[scr]||SCREENS.overview)();
+}
+function setRole(r){ state.role=r; toast((r==='executive'?'Executive read-only':ROLES[r].split(' · ')[0])+' role active','gov'); render(); }
+function selectDataset(id){ activateDataset(id); state.tab=null; state.route = DSB.scanned?'overview':'source'; toast('Active dataset: '+DATA.dataset.name); render(); }
+function runScan(){
+  if(DSB.scanned){ toast('Scan already complete for this dataset'); return; }
+  DSB.scanned=true;
+  const sig=FINDINGS.reduce((a,f)=>a+(f.signals||1),0);
+  logAudit(`Anomaly scan ${DATA.scan.id} executed — consolidated ${sig} signals into ${FINDINGS.length} findings across ${DATA.families.length} families; unreliable detectors withheld.`,'teal','System · detector '+DATA.scan.suite);
+  toast('Scan complete — '+FINDINGS.length+' findings surfaced');
+  go('anomalies');
+}
+function scanRequiredPanel(){
+  return `<div class="crumb"><a onclick="go('source')">Data Source</a><span class="sep">/</span>${state.route}</div>
+  <div class="card"><div class="card-b" style="text-align:center;padding:44px 20px">
+    <div style="font-size:34px;opacity:.28">▦</div>
+    <h3 style="margin:10px 0 4px">Anomaly scan not yet run</h3>
+    <p class="muted small" style="max-width:56ch;margin:0 auto 14px">Review the data summary and configure the scan for <b>${DATA.dataset.name}</b> before findings, investigations and governance become available. Nothing is scanned until you say so.</p>
+    <button class="btn pri" onclick="go('source')">Go to Data Source &amp; Config →</button>
+  </div></div>`;
+}
+
+/* ---------- modal + toast ---------- */
+function openModal(html){ document.getElementById('modalRoot').innerHTML = `<div class="overlay" onclick="if(event.target===this)closeModal()">${html}</div>`; }
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+function toast(msg, kind){
+  const el=document.createElement('div'); el.className='toast'+(kind==='gov'?' gov':'');
+  el.innerHTML=`<span class="ti">✓</span><span>${msg}<div class="xsmall" style="opacity:.7;margin-top:2px">Logged to activity timeline</div></span>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),300);},3400);
+}
+
+/* ============================================================
+   SCREENS
+   ============================================================ */
+const SCREENS = {};
+// active dataset's descriptive series (claims → developed investigation; EHR → eGFR trend)
+function profileSeries(){
+  const ref=DATA.profile.seriesRef;
+  if(ref==='inv') return INV&&INV.series;
+  return DATA[ref+'Series'];
+}
+
+/* ---- Data Source & Config (pre-scan summary + metadata + scan setup) ---- */
+SCREENS.source = ()=>{
+  const s=DATA.summary, d=DATA.dataset;
+  const hasFail = s.readiness.some(r=>r[1]==='Fail');
+  return `
+  <div class="crumb"><a onclick="go('source')">Data Source</a><span class="sep">/</span>Configuration &amp; summary</div>
+  <div class="between">
+    <div><h1 class="page">${d.name} <span class="mono" style="font-size:15px;color:var(--ink-3)">${d.id}</span></h1>
+    <p class="page-sub" style="margin-bottom:0">Review the dataset metadata and data summary, then configure and run the anomaly scan. No findings are generated until you run the scan.</p></div>
+    <div>${DSB.scanned?`<span class="chip green"><span class="cd"></span>Scan complete · ${DATA.scan.id}</span>`:`<span class="chip amber"><span class="cd"></span>Scan not run</span>`}</div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr 1fr;margin:6px 0 14px">
+    <div class="card"><div class="card-h">Dataset metadata</div><div class="card-b">
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:9px 20px;font-size:12.5px">
+        <div><span class="muted">Vendor</span><br><b>${d.vendor}</b></div>
+        <div><span class="muted">Data dictionary</span><br><b class="mono">${d.dict}</b></div>
+        <div><span class="muted">Domains</span><br>${d.domains}</div>
+        <div><span class="muted">Geography</span><br>${d.geo}</div>
+        <div><span class="muted">Observation period</span><br class="mono">${d.obs}</div>
+        <div><span class="muted">Analysis window</span><br class="mono">${DATA.cohort.window}</div>
+        <div><span class="muted">Refresh cadence</span><br>${d.cadence}</div>
+        <div><span class="muted">Working release</span><br><b class="mono">${d.working}</b> → ${d.incoming}</div>
+        <div><span class="muted">Latest complete</span><br class="mono">${d.latestComplete}</div>
+        <div><span class="muted">Runout</span><br>${d.runout}</div>
+      </div>
+      <div class="callout amber" style="margin-top:11px"><span class="ci">Known limitations</span><div>${d.limits}</div></div>
+    </div></div>
+    <div class="card"><div class="card-h">Data summary <span class="r">by domain</span></div><div class="card-b">
+      <table class="tbl"><thead><tr><th>Domain</th><th>Entity</th><th>Records</th><th>Span</th></tr></thead><tbody>
+        ${s.domains.map(r=>`<tr><td><b>${r[0]}</b></td><td class="small muted">${r[1]}</td><td class="num">${r[2]}</td><td class="small mono">${r[3]}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="divider"></div>
+      <div class="row" style="gap:26px">${s.entities.map(e=>`<div><div class="num" style="font-size:18px;font-weight:600">${e[1]}</div><div class="muted xsmall">${e[0]}</div></div>`).join('')}</div>
+    </div></div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:.8fr 1.2fr;margin-bottom:14px">
+    <div class="card"><div class="card-h">Field completeness</div><div class="card-b">
+      ${hbars(s.completeness.map(c=>[c[0],c[1],100, c[2]==='amber'?'var(--amber)':c[2]==='red'?'var(--red)':'var(--green)', c[1]+'%']))}
+    </div></div>
+    <div class="card"><div class="card-h">Field inventory</div><div class="card-b">
+      <table class="tbl"><thead><tr><th>Domain</th><th>Key fields</th><th>Type</th><th>Completeness</th></tr></thead><tbody>
+        ${s.fields.map(r=>`<tr><td><b>${r[0]}</b></td><td class="small mono">${r[1]}</td><td class="small">${r[2]}</td><td class="small">${r[3]}</td></tr>`).join('')}
+      </tbody></table>
+    </div></div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
+    <div class="card"><div class="card-h">Pre-scan readiness</div><div class="card-b">
+      ${s.readiness.map(r=>`<div class="between" style="padding:6px 0;border-bottom:1px solid var(--line)">
+        <span>${r[0]}</span><span class="${r[1]==='Pass'?'pass':r[1]==='Fail'?'fail':'partial'}">${r[1]} <span class="muted xsmall">· ${r[2]}</span></span></div>`).join('')}
+      ${hasFail?`<div class="callout amber" style="margin-top:10px"><span class="ci">⚠</span><div>A readiness check is failing. You can still scan — the scan will surface it as a finding — but it will not be silently ignored.</div></div>`:`<div class="callout green" style="margin-top:10px"><span class="ci">✓</span><div>Readiness checks passed. Ready to scan.</div></div>`}
+    </div></div>
+    <div class="card"><div class="card-h">Scan configuration</div><div class="card-b">
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:9px 20px;font-size:12.5px;margin-bottom:12px">
+        <div><span class="muted">Cohort</span><br><b>${DATA.cohort.name}</b> <span class="mono">${DATA.cohort.id} ${DATA.cohort.version}</span></div>
+        <div><span class="muted">Cohort size</span><br><b>${DATA.cohort.patients.toLocaleString()}</b> patients</div>
+        <div><span class="muted">Detector suite</span><br><b class="mono">${s.scanConfig.suite}</b></div>
+        <div><span class="muted">Baseline</span><br>${s.scanConfig.baseline}</div>
+        <div><span class="muted">FDR control</span><br class="mono">${s.scanConfig.fdr}</div>
+        <div><span class="muted">Anomaly families</span><br>${DATA.families.length} enabled</div>
+      </div>
+      <div class="small muted" style="margin-bottom:5px">Families to evaluate</div>
+      <div class="row" style="gap:5px">${DATA.families.map(fam=>`<span class="chip grey"><span class="cd"></span>${fam[0]}</span>`).join('')}</div>
+      <div class="small muted" style="margin-top:8px"><a onclick="go('scan-scope')">Open Scan Scope for full cohort logic →</a></div>
+    </div></div>
+  </div>
+
+  <div class="card"><div class="card-b between">
+    <div class="small muted">${DSB.scanned?`Scan ${DATA.scan.id} complete — ${FINDINGS.length} findings available.`:'Configure above, then run the anomaly scan to generate findings.'}</div>
+    <div class="row">
+      ${DSB.scanned?`<button class="btn" onclick="rerunScan()">Re-run scan</button><button class="btn pri" onclick="go('anomalies')">View anomalies →</button>`
+        :`<button class="btn pri" onclick="runScan()">▶ Run anomaly scan (${DATA.families.length} families)</button>`}
+    </div>
+  </div></div>`;
+};
+function rerunScan(){ logAudit(`Re-ran anomaly scan ${DATA.scan.id}.`,'teal','System · detector '+DATA.scan.suite); toast('Scan re-run complete'); go('anomalies'); }
+
+/* ---- Overview ---- */
+SCREENS.overview = ()=>{
+  const newCount=FINDINGS.filter(f=>f.timing.includes('New')||f.status==='New').length;
+  const hi=FINDINGS.filter(f=>f.priority>=80).length;
+  const likely=FINDINGS.filter(f=>/Likely|Confirmed/.test(f.dqrisk)).length;
+  const openInv=FINDINGS.filter(f=>['Under investigation','Submitted for review'].includes(f.status)).length;
+  const famCounts={}; FINDINGS.forEach(f=>famCounts[f.family]=(famCounts[f.family]||0)+1);
+  const statusCounts={}; FINDINGS.forEach(f=>statusCounts[f.status]=(statusCounts[f.status]||0)+1);
+  const pl=(profileSeries()||{labels:[]}).labels.slice(-12);
+  const compTrend={labels:pl.length?pl:['','','','','','','','','','','',''],
+    exp:Array(12).fill(97.5),lo:Array(12).fill(95),hi:Array(12).fill(99.5),
+    obs:[97.6,97.4,97.8,97.5,97.9,97.3,97.8,97.6,97.9,96.1,94.2,92.4],onset:null,incompleteFrom:11};
+  return `
+  <div class="crumb"><a onclick="go('overview')">Workspace</a><span class="sep">/</span>Overview</div>
+  <h1 class="page">Data-quality overview</h1>
+  <p class="page-sub">Fitness-for-use posture for the working release, with the anomaly queue, governance status, and dataset readiness at a glance.</p>
+  <div class="kpis" style="margin-bottom:14px">
+    <div class="kpi"><div class="v">${newCount}</div><div class="k">New DQ anomalies</div><div class="sub">since scan ${DATA.scan.id}</div></div>
+    <div class="kpi risk"><div class="v">${hi}</div><div class="k">High priority (≥80)</div><div class="sub">require prompt triage</div></div>
+    <div class="kpi warn"><div class="v">${likely}</div><div class="k">Likely / confirmed data issues</div><div class="sub">disposition-backed</div></div>
+    <div class="kpi"><div class="v">${openInv}</div><div class="k">Open investigations</div><div class="sub">1 awaiting review</div></div>
+  </div>
+  <div class="grid" style="grid-template-columns:1.15fr .85fr;margin-bottom:14px">
+    <div class="card">
+      <div class="card-h">Dataset identity & fitness-for-use</div>
+      <div class="card-b">
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px 22px;font-size:12.5px">
+          <div><span class="muted">Dataset</span><br><b>${DATA.dataset.name}</b> <span class="tag">${DATA.dataset.id}</span></div>
+          <div><span class="muted">Vendor</span><br>${DATA.dataset.vendor}</div>
+          <div><span class="muted">Domains</span><br>${DATA.dataset.domains}</div>
+          <div><span class="muted">Observation window</span><br class="mono">${DATA.dataset.obs}</div>
+          <div><span class="muted">Geography</span><br>${DATA.dataset.geo}</div>
+          <div><span class="muted">Cadence / dictionary</span><br>${DATA.dataset.cadence} · ${DATA.dataset.dict}</div>
+        </div>
+        <div class="divider"></div>
+        <div class="callout teal"><span class="ci">Fitness-for-use</span><div>
+          Working release <b class="mono">${DATA.dataset.working}</b>: <b>${DATA.fitness.working}</b> <span class="muted">(${DATA.fitness.workingNote})</span>.<br>
+          Incoming <b class="mono">${DATA.dataset.incoming}</b>: <b>${DATA.fitness.incoming}</b> — recommendation ${DATA.fitness.incomingRec}. <a onclick="go('refreshes','decision')">Open release decision →</a>
+        </div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h">Data readiness</div>
+      <div class="card-b">
+        ${DATA.summary.readiness.map(r=>`
+          <div class="between" style="padding:6px 0;border-bottom:1px solid var(--line)">
+            <span>${r[0]}</span><span class="${r[1]==='Pass'?'pass':r[1]==='Fail'?'fail':'partial'}">${r[1]} <span class="muted xsmall">· ${r[2]}</span></span></div>`).join('')}
+        <div class="callout amber" style="margin-top:10px"><span class="ci">⚠</span><div>Scan results are qualified where recent periods are immature or fields are unreliable; affected detectors are withheld rather than silently degraded (see the anomaly queue).</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="card"><div class="card-h">Anomalies by family</div><div class="card-b">
+      ${hbars(Object.entries(famCounts).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v,null,'var(--teal)']))}</div></div>
+    <div class="card"><div class="card-h">Findings by review status</div><div class="card-b">
+      ${hbars(Object.entries(statusCounts).map(([k,v])=>[k,v,null, k==='Submitted for review'?'var(--purple)':k==='Monitoring'?'var(--green)':'var(--teal)']))}</div></div>
+    <div class="card"><div class="card-h">Completeness trend <span class="r">12 mo · expected band</span></div><div class="card-b">
+      ${expectedBandChart(compTrend,{h:150})}
+      <div class="legend"><span class="li"><span class="sw" style="background:var(--band)"></span>Expected range</span><span class="li"><span class="sw" style="background:var(--teal)"></span>Observed</span><span class="li"><span class="sw" style="background:var(--red)"></span>Out of range</span></div>
+    </div></div>
+  </div>`;
+};
+
+/* ---- Cohort Profile ---- */
+SCREENS.cohort = ()=>{
+  const ps=profileSeries()||{labels:[],exp:[],lo:[],hi:[],obs:[]};
+  const util=Object.assign({}, ps);
+  const p=DATA.profile;
+  return `
+  <div class="crumb"><a onclick="go('overview')">Workspace</a><span class="sep">/</span>Cohort Profile</div>
+  <h1 class="page">Cohort Profile — ${DATA.cohort.name} <span class="mono" style="font-size:15px;color:var(--ink-3)">${DATA.cohort.id} ${DATA.cohort.version}</span></h1>
+  <p class="page-sub">Standardized descriptive profile with curated exploration only. This is not a BI or cohort-authoring tool — segment views are fixed and every save routes into an investigation.</p>
+  <div class="kpis" style="margin-bottom:14px">
+    ${p.kpis.map(k=>`<div class="kpi"><div class="v">${k[0]}</div><div class="k">${k[1]}</div></div>`).join('')}
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h">${p.unit.includes('eGFR')?'Clinical trend':'Utilization trend'} <span class="r">anomaly + refresh markers</span></div>
+    <div class="card-b">
+      ${expectedBandChart(util,{h:210})}
+      <div class="legend"><span class="li"><span class="sw" style="background:var(--band)"></span>Expected range</span><span class="li"><span class="sw" style="background:var(--teal)"></span>${p.unit}</span><span class="li"><span class="sw" style="background:var(--red)"></span>Out of range (${p.relFinding})</span></div>
+      <div class="callout amber" style="margin-top:10px"><span class="ci">→</span><div>The out-of-range markers relate to <a onclick="openFinding('${p.relFinding}')">${p.relFinding}</a>. ${p.note}</div></div>
+    </div>
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr">
+    <div class="card"><div class="card-h">Demographics & mix</div><div class="card-b">
+      ${hbars(p.demo.map(d=>[d[0],d[1],100,'var(--teal)',d[1]+'%']))}
+    </div></div>
+    <div class="card"><div class="card-h">Curated exploration <span class="r">not a BI tool</span></div><div class="card-b">
+      <div class="row" style="margin-bottom:10px"><span class="muted small">Granularity</span><div class="seg"><button class="on">Monthly</button><button>Weekly</button></div>
+        <span class="muted small">Normalize</span><div class="seg"><button class="on">per 1,000</button><button>absolute</button></div></div>
+      <div class="row" style="margin-bottom:12px"><span class="chip grey"><span class="cd"></span>Region: All</span><span class="chip grey"><span class="cd"></span>Payer: All</span><span class="chip grey"><span class="cd"></span>Setting: Outpatient</span></div>
+      <button class="btn sm" onclick="toast('View saved to a new investigation draft')">＋ Save view to investigation</button>
+      <div class="callout teal" style="margin-top:12px"><span class="ci">i</span><div>Filters are curated and segment comparison is fixed. Arbitrary ad-hoc exploration and cohort authoring are future-state.</div></div>
+    </div></div>
+  </div>`;
+};
+
+/* ---- Scan Scope ---- */
+SCREENS['scan-scope'] = ()=>{
+  return `
+  <div class="crumb"><a onclick="go('overview')">Workspace</a><span class="sep">/</span><a onclick="go('cohort')">Cohort Profile</a><span class="sep">/</span>Scan Scope</div>
+  <h1 class="page">Scan Scope</h1>
+  <p class="page-sub">Version-controlled cohort definition (read-only) plus the ${DATA.families.length} auto-evaluated data-quality anomaly families. Cohort authoring is shown as future state.</p>
+  <div class="grid" style="grid-template-columns:.9fr 1.1fr">
+    <div class="card"><div class="card-h">Cohort definition <span class="r mono">${DATA.cohort.id} ${DATA.cohort.version}</span></div><div class="card-b">
+      <div class="small"><b>Inclusion:</b> ${DATA.cohortDef.incl}</div>
+      <div class="small" style="margin-top:6px"><b>Exclusion:</b> ${DATA.cohortDef.excl}</div>
+      <div class="divider"></div>
+      <div class="row">${DATA.cohortDef.codes.map(c=>`<span class="tag">${c}</span>`).join('')}</div>
+      <button class="btn sm" style="margin-top:10px" onclick="codeListModal()">View full logic & code lists</button>
+      <div class="callout teal" style="margin-top:10px"><span class="ci">i</span><div>Read-only. Approval reference ${DATA.cohortDef.approval}. Cohort authoring is future-state.</div></div>
+    </div></div>
+    <div class="card"><div class="card-h">Data-quality anomaly families <span class="r">${DATA.families.length} auto-evaluated</span></div><div class="card-b" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${DATA.families.map(([n,d])=>`<div style="border:1px solid var(--line);border-radius:7px;padding:9px 11px">
+        <div style="font-weight:600;font-size:12.5px">${n}</div><div class="muted xsmall" style="margin-top:2px">${d}</div></div>`).join('')}
+    </div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="card-h">Scan configuration</div><div class="card-b row" style="gap:22px">
+    <div><span class="muted small">Detector suite</span><br><b class="mono">${DATA.scan.suite}</b></div>
+    <div><span class="muted small">Tracks</span><br>Track 1 broad scan · Track 2 known-anomaly reassessment</div>
+    <div><span class="muted small">Baseline</span><br>${DATA.summary.scanConfig.baseline}; immature periods excluded</div>
+    <div><span class="muted small">FDR control</span><br>${DATA.summary.scanConfig.fdr}</div>
+  </div></div>`;
+};
+function codeListModal(){
+  const claims = state.dataset==='DSN-114';
+  const body = claims
+    ? `<p class="small muted">Heart-failure capture list CL-HF-v12, effective FY2026. Note the I50.8x drop that drives ANM-0146.</p>
+       <table class="tbl"><thead><tr><th>Code</th><th>Description</th><th>Status</th></tr></thead><tbody>
+       ${[['I50.1','Left ventricular failure','Active'],['I50.20','Systolic HF, unspecified','Active'],['I50.30','Diastolic HF, unspecified','Active'],['I50.81','Right heart failure','<span class="fail">Dropped FY2026</span>'],['I50.82','Biventricular HF','<span class="fail">Dropped FY2026</span>'],['I50.9','Heart failure, unspecified','Active']].map(r=>`<tr><td class="mono">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}
+       </tbody></table>`
+    : `<p class="small muted">CKD value sets. Note the LOINC unit field on serum creatinine — the source of the EHR-0207 unit-remap issue.</p>
+       <table class="tbl"><thead><tr><th>LOINC / code</th><th>Concept</th><th>Unit</th></tr></thead><tbody>
+       ${[['2160-0','Creatinine, serum','mg/dL <span class="fail">(unit not normalized: Northlake)</span>'],['62238-1','eGFR (CKD-EPI)','mL/min/1.73m²'],['14959-1','Albumin/creatinine ratio','mg/g'],['4548-4','HbA1c','% <span class="partial">(mapping gap)</span>'],['N18.30','CKD stage 3 unspecified','—'],['N18.4','CKD stage 4','—']].map(r=>`<tr><td class="mono">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}
+       </tbody></table>`;
+  openModal(`<div class="modal"><div class="modal-h"><h3>Managed code lists — ${DATA.cohort.name} ${DATA.cohort.version}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b">${body}</div>
+  <div class="modal-f"><button class="btn" onclick="closeModal()">Close</button></div></div>`);
+}
+
+/* ---- DQ Anomalies queue ---- */
+SCREENS.anomalies = ()=>{
+  const rows=[...FINDINGS].sort((a,b)=>b.priority-a.priority);
+  return `
+  <div class="crumb"><a onclick="go('overview')">Findings</a><span class="sep">/</span>DQ Anomalies</div>
+  <h1 class="page">DQ Anomalies <span class="chip grey" style="vertical-align:middle">${rows.length} findings</span></h1>
+  <p class="page-sub">Every finding is a suspected data issue until checks show otherwise. The investigation-priority score is always shown decomposed into its six components — never as a bare number.</p>
+  <div class="row" style="margin-bottom:14px">
+    <div class="seg"><button class="on">All families</button></div>
+    <div class="seg"><button class="on">All priority</button></div>
+    <div class="seg"><button class="on">All status</button></div>
+    <span class="muted small" style="margin-left:auto">Sorted by priority ▾</span>
+  </div>
+  <div class="grid" style="gap:12px">
+  ${rows.map(f=>`
+    <div class="card" style="cursor:pointer" onclick="openFinding('${f.id}')">
+      <div class="card-b">
+        <div class="between" style="margin-bottom:8px">
+          <div class="row" style="gap:8px">
+            <span class="mono" style="font-weight:600;font-size:13px">${f.id}</span>
+            <span class="chip ${f.dqi?(/Confirmed/.test(f.dqrisk)?'red':'amber'):'grey'}"><span class="cd"></span>${f.dqrisk}</span>
+            <span class="chip grey"><span class="cd"></span>${f.status}</span>
+            <span class="chip teal"><span class="cd"></span>${f.timing}</span>
+          </div>
+          <div class="row" style="gap:6px"><span class="muted xsmall">${f.signals} signals</span>
+            <span class="num" style="font-size:20px;font-weight:600;color:${f.priority>=80?'var(--red)':f.priority>=60?'var(--amber)':'var(--ink-2)'}">${f.priority}</span></div>
+        </div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:3px">${f.title}</div>
+        <div class="muted small" style="margin-bottom:10px;max-width:92ch">${f.summary}</div>
+        <div class="row small muted" style="gap:16px;margin-bottom:11px">
+          <span><b class="mono" style="color:var(--ink-2)">${f.family}</b></span>
+          <span>Measure: ${f.measure}</span><span>Segment: ${f.segment}</span><span>Period: ${f.period}</span>
+          <span>Reach: ${f.reach}</span>
+        </div>
+        ${scoreBars(f.score)}
+        <div class="small muted" style="margin-top:9px;font-style:italic">Why ranked here: ${f.why||'Composite of magnitude, reach and recency relative to open queue.'}</div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+};
+function openFinding(id){
+  const f=FINDINGS.find(x=>x.id===id);
+  if(f.developed){ go('investigation'); return; }
+  // summary modal for non-developed findings
+  openModal(`<div class="modal wide"><div class="modal-h"><span class="mono" style="font-weight:600">${f.id}</span><h3 style="margin-left:6px">${f.title}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b">
+    <div class="row" style="gap:6px;margin-bottom:12px">
+      <span class="chip ${f.dqi?'amber':'grey'}"><span class="cd"></span>${f.dqrisk}</span>
+      <span class="chip grey"><span class="cd"></span>${f.status}</span><span class="chip teal"><span class="cd"></span>${f.timing}</span></div>
+    <p class="small">${f.summary}</p>
+    <div class="card" style="margin:12px 0"><div class="card-b">${miniEvidenceChart(f)}</div></div>
+    <h4 style="margin:14px 0 8px;font-size:13px">Priority decomposition — ${f.priority}</h4>
+    ${scoreBars(f.score)}
+    <p class="small muted" style="margin-top:8px;font-style:italic">${f.why||''}</p>
+    ${f.origin==='reported-by-study-team'?`<div class="callout purple" style="margin-top:12px"><span class="ci">↳</span><div>Origin: reported by study team ST-198 — demonstrates the analyst-raised investigation path (${f.inv}). Remedy is a code-list update, not a vendor escalation.</div></div>`:''}
+  </div>
+  <div class="modal-f">
+    ${f.report?`<button class="btn" onclick="closeModal();go('monitoring')">View monitoring</button>`:''}
+    ${f.status==='New'&&can('edit')?`<button class="btn pri" onclick="closeModal();toast('Investigation opened from ${f.id}')">Open investigation</button>`:''}
+    <button class="btn" onclick="closeModal()">Close</button>
+  </div></div>`);
+}
+function miniEvidenceChart(f){
+  // synthetic small band chart
+  const base=100, s={labels:['','','','','','','','','','','',''],exp:Array(12).fill(base),lo:Array(12).fill(base*0.94),hi:Array(12).fill(base*1.06),
+    obs:[100,101,99,100,101,99,100,101,99,100, base*(1+ (parseFloat(f.magnitude)||-5)/200), base*(1+(parseFloat(f.magnitude)||-5)/100)],onset:10,incompleteFrom:null};
+  return expectedBandChart(s,{h:150});
+}
+
+/* ---- Investigations list ---- */
+SCREENS.investigations = ()=>{
+  const rows=FINDINGS.filter(f=>f.inv);
+  return `
+  <div class="crumb"><a onclick="go('overview')">Findings</a><span class="sep">/</span>Investigations</div>
+  <h1 class="page">Investigations</h1>
+  <div class="kpis" style="margin-bottom:16px">
+    <div class="kpi"><div class="v">2</div><div class="k">Open</div></div>
+    <div class="kpi gov"><div class="v">${INV.submitted&&!INV.approved?1:0}</div><div class="k">Awaiting review</div></div>
+    <div class="kpi"><div class="v">3</div><div class="k">Closed (90d)</div></div>
+    <div class="kpi"><div class="v">4.2d</div><div class="k">Median time-to-disposition</div></div>
+  </div>
+  <div class="between" style="margin-bottom:10px"><h3 style="margin:0;font-size:14px">Active & recent</h3>
+    <button class="btn sm" onclick="toast('New investigation drafted from reported issue')">＋ Open investigation from reported issue</button></div>
+  <div class="card"><table class="tbl">
+    <thead><tr><th>Investigation</th><th>Finding</th><th>Origin</th><th>Owner</th><th>Opened</th><th>Status</th><th>Disposition</th></tr></thead>
+    <tbody>
+    ${rows.map(f=>`<tr class="click" onclick="${f.developed?"go('investigation')":`openFinding('${f.id}')`}">
+      <td class="mono">${f.inv}</td><td class="mono">${f.id}</td>
+      <td><span class="chip grey"><span class="cd"></span>${f.origin==='reported-by-study-team'?'Reported by study team':f.origin==='analyst-raised'?'Analyst-raised':'Scan'}</span></td>
+      <td>${f.developed?INV.owner:'M. Okafor'}</td><td class="mono">${f.developed?INV.opened:'2026-06-05'}</td>
+      <td><span class="chip ${f.status==='Submitted for review'?'purple':f.status==='Monitoring'?'green':'teal'}"><span class="cd"></span>${f.status}</span></td>
+      <td class="small muted">${f.developed?(INV.disposition||'—'):(f.report?'Likely data issue':'—')}</td></tr>`).join('')}
+    </tbody></table></div>`;
+};
+
+/* ---- Investigation detail (ANM-0142) ---- */
+SCREENS.investigation = ()=>{
+  if(!INV || !INV.developed) return `
+    <div class="crumb"><a onclick="go('investigations')">Investigations</a><span class="sep">/</span>Detail</div>
+    <div class="card"><div class="card-b" style="text-align:center;padding:40px">
+      <h3 style="margin:0 0 6px">No fully-developed investigation for this dataset</h3>
+      <p class="muted small" style="max-width:56ch;margin:0 auto 12px">In this prototype the step-by-step investigation workspace is fully worked through on the claims dataset (ANM-0142). For ${DATA.dataset.name}, open any finding from the queue to see its evidence, score decomposition and status.</p>
+      <button class="btn pri" onclick="go('anomalies')">Go to DQ Anomalies →</button>
+    </div></div>`;
+  const f=FINDINGS.find(x=>x.id===INV.finding);
+  const tab=state.tab||'evidence';
+  const steps=['Evidence','Hypotheses','Disposition','Review','Approved'];
+  const stepIdx=INV.approved?4:INV.submitted?3:INV.disposition?2:2;
+  return `
+  <div class="crumb"><a onclick="go('investigations')">Investigations</a><span class="sep">/</span><span class="mono">${INV.id}</span> · ${f.id}</div>
+  <div class="between">
+    <div><h1 class="page">${f.title}</h1>
+    <div class="row small muted" style="gap:12px;margin-top:2px"><span class="mono">${INV.id}</span><span>Origin: scan</span><span>Owner: ${INV.owner}</span><span>Opened ${INV.opened}</span>
+      <span class="chip ${INV.approved?'green':INV.submitted?'purple':'teal'}"><span class="cd"></span>${f.status}</span></div></div>
+    <div class="num" style="font-size:30px;font-weight:600;color:var(--red)">${f.priority}</div>
+  </div>
+  <div class="stepper" style="margin-top:16px">
+    ${steps.map((s,i)=>`<div class="step ${i<stepIdx?'done':i===stepIdx?'cur':''}"><span class="sn">${i<stepIdx?'✓':i+1}</span>${s}</div>`).join('')}
+  </div>
+  <div class="tabs">
+    ${[['evidence','Evidence'],['hypotheses','Hypotheses & disposition'],['detection','Detection detail'],['lineage','Signal lineage',f.signals],['review','Review & approval'],['activity','Activity log']].map(t=>
+      `<div class="tab ${tab===t[0]?'active':''}" onclick="go('investigation','${t[0]}')">${t[1]}${t[2]?`<span class="b">${t[2]}</span>`:''}</div>`).join('')}
+  </div>
+  ${INV_TABS[tab]?INV_TABS[tab](f):''}`;
+};
+
+const INV_TABS={};
+INV_TABS.evidence=(f)=>{
+  const mode=state._evmode||'rate';
+  const drilled=INV.rowAccess.length>0;
+  return `
+  <div class="callout teal" style="margin-bottom:14px"><span class="ci">Evidence</span><div>${f.summary} Onset aligns to the <b>v2026.06</b> refresh boundary; the residual cohort returns to expected range once the two exited provider groups are excluded (see checks).</div></div>
+  <div class="card" style="margin-bottom:14px"><div class="card-h">Observed vs expected range <span class="r">
+    <span class="seg">${['rate','absolute','% change','indexed','vs prior'].map(m=>`<button class="${mode===m?'on':''}" onclick="setEvMode('${m}')">${m}</button>`).join('')}</span></span></div>
+    <div class="card-b">
+      ${expectedBandChart(INV.series,{h:230})}
+      <div class="legend"><span class="li"><span class="sw" style="background:var(--band)"></span>Expected range</span><span class="li"><span class="sw" style="background:var(--teal)"></span>Observed (${mode})</span><span class="li"><span class="sw" style="background:var(--red)"></span>Out of range</span><span class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,var(--ink-3),var(--ink-3) 1px,transparent 1px,transparent 4px)"></span>Incomplete (runout)</span></div>
+    </div></div>
+  <div class="grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
+    <div class="card"><div class="card-h">Contribution analysis <span class="r">share of shortfall</span></div><div class="card-b">
+      ${hbars(INV.contribution.map(c=>[c.dim,c.share,50, c.flag==='unusual'?'var(--red)':'var(--teal)', c.share+'%']))}
+      <div class="callout amber" style="margin-top:10px"><span class="ci">!</span><div>South Atlantic + East North Central ≈ 83% of the shortfall — statistically unusual concentration. Two exited provider groups (Coastal Care Partners, Lakeshore Medical Group; −1,187 NPIs) ≈ 66%.</div></div>
+    </div></div>
+    <div class="card"><div class="card-h">Data-quality challenge <span class="r">8 standard tests</span></div><div class="card-b">
+      <table class="tbl"><tbody>
+      ${INV.dqTests.map(t=>`<tr><td>${t[0]}</td><td><span class="${t[1]==='Pass'?'pass':t[1]==='Partial'?'partial':'fail'}">${t[1]}</span></td><td class="muted xsmall">${t[2]}</td></tr>`).join('')}
+      </tbody></table>
+    </div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px"><div class="card-h">Related measures</div><div class="card-b row" style="gap:26px">
+    <div><div class="muted xsmall">Pharmacy fills / 1,000</div>${spark([100,101,99,100,101,100,99,101,100],{color:'var(--green)'})}<div class="small pass">Stable</div></div>
+    <div><div class="muted xsmall">Active patients</div>${spark([100,100,99,100,99,100,99,98,98],{color:'var(--amber)'})}<div class="small">−1.7%</div></div>
+    <div><div class="muted xsmall">Enrollment</div>${spark([100,100,100,100,101,100,100,100,100],{color:'var(--green)'})}<div class="small pass">Stable</div></div>
+  </div></div>
+  <div class="card"><div class="card-h">Row-level drill-down <span class="r">audited</span></div><div class="card-b">
+    <div class="between">
+      <div class="small muted" style="max-width:60ch">Patient/row-level evidence is available only inside an investigation and every access is logged with an audit reference. Excluded from all exports by default.</div>
+      <button class="btn ${drilled?'':'pri'} sm" onclick="toggleDrill()">${drilled?'Row-level open':'Open audited row-level view'}</button>
+    </div>
+    ${drilled?`<div class="callout purple" style="margin-top:12px"><span class="ci">🔒</span><div>Row-level view opened. Audit reference <b class="mono">${INV.rowAccess[INV.rowAccess.length-1]}</b> recorded to the activity log. Showing attributed patients of the two exited provider groups (sample, redacted).</div></div>`:''}
+  </div></div>`;
+};
+function setEvMode(m){ state._evmode=m; render(); }
+function toggleDrill(){
+  if(!can('edit')){ toast('Read-only role cannot open row-level view','gov'); return; }
+  const ref=auditRef(); INV.rowAccess.push(ref);
+  logAudit('Opened audited row-level drill-down (attributed patients, exited provider groups). Reference '+ref+'.','purple');
+  toast('Row-level access logged · '+ref,'gov'); render();
+}
+
+INV_TABS.hypotheses=(f)=>{
+  const canEdit = can('edit') && !INV.submitted;
+  return `
+  <div class="callout teal" style="margin-bottom:14px"><span class="ci">Evidence recap</span><div>Outpatient encounters −21.3% over 3 mature months; ~83% of shortfall in two divisions; two provider groups exited the feed at the refresh boundary; excluding their patients the residual is in range; pharmacy & enrollment stable.</div></div>
+  <h3 style="font-size:14px;margin:0 0 10px">Ranked hypotheses</h3>
+  ${INV.hypotheses.map(h=>`
+    <div class="card" style="margin-bottom:11px;border-left:3px solid ${h.action==='accepted'?'var(--green)':h.action==='rejected'?'var(--line-strong)':'var(--teal)'}">
+      <div class="card-b">
+        <div class="between" style="margin-bottom:6px">
+          <div class="row"><span class="mono" style="font-weight:600">${h.id}</span><b>${h.cls}</b>
+            ${h.ruleout?`<span class="chip purple"><span class="cd"></span>Rule-out: real-world change</span>`:''}
+            <span class="chip ${h.action==='accepted'?'green':h.action==='rejected'?'grey':'teal'}"><span class="cd"></span>${h.action}</span></div>
+          <div class="row small muted">System confidence ${pips(h.conf)} <span>${h.conf}/5</span></div>
+        </div>
+        <div class="small" style="margin-bottom:10px">${h.stmt}</div>
+        <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div><div class="xsmall" style="color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Supporting</div>${h.support.map(s=>`<div class="evrow"><span>✓</span><span>${s}</span></div>`).join('')}</div>
+          <div><div class="xsmall" style="color:var(--red);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Contradicting</div>${h.contra.map(s=>`<div class="evrow"><span>✕</span><span>${s}</span></div>`).join('')}</div>
+          <div><div class="xsmall" style="color:var(--ink-3);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Missing</div>${(h.missing.length?h.missing:['—']).map(s=>`<div class="evrow"><span>?</span><span>${s}</span></div>`).join('')}</div>
+        </div>
+        ${canEdit?`<div class="row" style="margin-top:10px">
+          <button class="btn sm ${h.action==='accepted'?'pri':''}" onclick="setHyp('${h.id}','accepted')">Accept</button>
+          <button class="btn sm ${h.action==='rejected'?'':''}" onclick="setHyp('${h.id}','rejected')">Reject</button>
+          <button class="btn sm" onclick="setHyp('${h.id}','combined')">Combine</button>
+          <button class="btn sm" onclick="setHyp('${h.id}','sme-review')">SME review</button>
+        </div>`:''}
+      </div>
+    </div>`).join('')}
+
+  <div class="card" style="margin:16px 0"><div class="card-h">Executable checks <span class="r">${INV.checks.filter(c=>c.run).length}/${INV.checks.length} run</span></div>
+    <div class="card-b"><table class="tbl"><thead><tr><th>Check</th><th>Result</th><th>Effect</th><th></th></tr></thead><tbody>
+    ${INV.checks.map((c,i)=>`<tr><td><b>${c.name}</b><div class="muted xsmall mono">${c.params}</div></td>
+      <td class="small">${c.run?c.result:'<span class="muted">not run</span>'}</td>
+      <td class="small">${c.run?c.effect:'—'}</td>
+      <td>${c.run?'<span class="chip green"><span class="cd"></span>run</span>':(canEdit?`<button class="btn sm pri" onclick="runCheck(${i})">Run</button>`:'<span class="muted xsmall">pending</span>')}</td></tr>`).join('')}
+    </tbody></table></div></div>
+
+  <div class="card"><div class="card-h">Disposition & impact</div><div class="card-b">
+    <div class="small muted" style="margin-bottom:8px">Disposition</div>
+    <div class="row" style="gap:7px;margin-bottom:14px">
+      ${['Confirmed data issue','Likely data issue','Not a data issue — real-world signal (hand off)','Expected/explainable','Inconclusive','Dismissed'].map(d=>
+        `<button class="btn sm ${INV.disposition===d?'pri':''}" ${canEdit?'':'disabled'} onclick="setDisp('${d}')">${d}</button>`).join('')}
+    </div>
+    <div class="small muted" style="margin-bottom:8px">Cause classification <span class="xsmall">(separate · multi-select)</span></div>
+    <div class="row" style="gap:7px;margin-bottom:14px">
+      ${['Data coverage','Completeness','Cohort composition','Coding/terminology','Refresh/pipeline','Provider/geo concentration','Real-world change','Detection sensitivity','Unknown'].map(c=>
+        `<button class="btn sm ${INV.causes.includes(c)?'pri':''}" ${canEdit?'':'disabled'} onclick="toggleCause('${c}')">${INV.causes.includes(c)?'✓ ':''}${c}</button>`).join('')}
+    </div>
+    <div class="divider"></div>
+    <div class="between"><b style="font-size:13px">Quantified bias table</b><a onclick="go('study-impact')">Open Study Impact registry →</a></div>
+    <table class="tbl" style="margin-top:8px"><thead><tr><th>Measure</th><th>Direction</th><th>Estimated magnitude (bounds)</th><th>Strata · periods</th></tr></thead><tbody>
+      <tr><td>Outpatient utilization</td><td><span class="chip red"><span class="cd"></span>Underestimated</span></td><td class="mono">15–20% (divisions) · 8–10% cohort</td><td class="small">SA, ENC · 2026-02→04</td></tr>
+      <tr><td>Cost PPPM</td><td><span class="chip red"><span class="cd"></span>Underestimated</span></td><td class="mono">6–9%</td><td class="small">Affected divisions · 2026-02→04</td></tr>
+      <tr><td>Pharmacy utilization</td><td><span class="chip green"><span class="cd"></span>Unaffected</span></td><td>—</td><td class="small">Verified by Rx-persistence check</td></tr>
+      <tr><td>Enrollment</td><td><span class="chip green"><span class="cd"></span>Unaffected</span></td><td>—</td><td class="small">Verified by CE recompute</td></tr>
+    </tbody></table>
+    <div class="callout teal" style="margin-top:8px"><span class="ci">Derivation</span><div>Bounds from contribution analysis + exited-provider exclusion recompute, with ±3 pts attribution uncertainty.</div></div>
+    <div class="divider"></div>
+    ${submitBlock(f)}
+  </div></div>`;
+};
+function submitBlock(f){
+  if(INV.approved) return `<div class="callout green"><span class="ci">✓</span><div>Approved by Reviewer. Live report <b class="mono">${INV.reportVersion}</b> created (immutable). <a onclick="go('reports')">Open report →</a></div></div>`;
+  if(INV.submitted) return `<div class="callout purple"><span class="ci">🔒</span><div>Submitted for independent review — editing is locked. Only the Reviewer can act. <a onclick="go('investigation','review')">Go to Review tab →</a></div></div>`;
+  const ready = INV.disposition && INV.causes.length>0;
+  const reasons=[]; if(!INV.disposition)reasons.push('set a disposition'); if(INV.causes.length===0)reasons.push('add ≥1 cause'); if(state.role!=='analyst')reasons.push('Analyst role required');
+  const ok = ready && state.role==='analyst';
+  return `<div class="between">
+    <div class="small muted">Submission requires: disposition set · impact complete · Analyst role. Submission locks editing.</div>
+    <button class="btn pri" ${ok?'':'disabled'} onclick="submitForReview()">Submit for independent review</button>
+  </div>${ok?'':`<div class="locknote">⚠ To submit: ${reasons.join(' · ')}.</div>`}`;
+}
+function setHyp(id,action){ const h=INV.hypotheses.find(x=>x.id===id); h.action=action; logAudit(`Hypothesis ${id} (${h.cls}) marked ${action}.`); toast(`${id} ${action}`); render(); }
+function runCheck(i){ const c=INV.checks[i]; c.run=true; logAudit(`Ran check: ${c.name} — ${c.result}. Effect: ${c.effect}.`); toast('Check run: '+c.name); render(); }
+function setDisp(d){ INV.disposition=d; logAudit(`Disposition set: ${d}.`); toast('Disposition: '+d); render(); }
+function toggleCause(c){ const i=INV.causes.indexOf(c); if(i<0)INV.causes.push(c); else INV.causes.splice(i,1); logAudit(`Cause classification updated: ${INV.causes.join(', ')||'(none)'}.`); render(); }
+function submitForReview(){
+  INV.submitted=true; FINDINGS.find(f=>f.id==='ANM-0142').status='Submitted for review';
+  logAudit('Submitted INV-2026-041 for independent review (GOV-R2 trigger). Editing locked.','purple');
+  toast('Submitted for review — switch to Reviewer role to act','gov'); go('investigation','review');
+}
+
+INV_TABS.detection=(f)=>`
+  <div class="callout teal" style="margin-bottom:14px"><span class="ci">Plain language</span><div>A 24-month seasonal baseline expects ~439 outpatient encounters per 1,000 members per month for this cohort. Observed values for Feb–Apr 2026 fall 20–24% below the lower bound of the expected range — a departure too large and too sustained to be noise.</div></div>
+  <details open><summary>Baseline details</summary><div class="dd">
+    <div class="row" style="gap:26px"><span>Window: <b>24 months</b>, rolling</span><span>Seasonal handling: <b>month-of-year adjustment</b></span><span>Threshold: <b>±2σ + effect-size floor</b></span><span>Min sample: <b>n≥30 provider-months/segment</b></span></div>
+  </div></details>
+  <details><summary>Full technical parameters</summary><div class="dd">
+    <table class="tbl"><tbody>
+    <tr><td>Detector</td><td class="mono">volume.trendbreak v3.2</td></tr>
+    <tr><td>Test statistic</td><td class="mono">CUSUM + segmented regression; z=−5.8 at onset</td></tr>
+    <tr><td>Multiple testing</td><td class="mono">Benjamini–Hochberg, q=0.05</td></tr>
+    <tr><td>Effect size</td><td class="mono">Cohen's h = 0.41</td></tr>
+    </tbody></table>
+  </div></details>
+  <details><summary>Sensitivity analysis</summary><div class="dd">
+    <table class="tbl"><thead><tr><th>Perturbation</th><th>Result</th><th>Robustness</th></tr></thead><tbody>
+    <tr><td>Baseline 18m vs 24m vs 30m</td><td>Onset & depth unchanged</td><td><span class="pass">Robust</span></td></tr>
+    <tr><td>Threshold ±1.5σ / ±2.5σ</td><td>Flag persists</td><td><span class="pass">Robust</span></td></tr>
+    <tr><td>Include vs exclude 2026-05 runout</td><td>Depth −2 pts; flag persists</td><td><span class="partial">Moderately sensitive</span></td></tr>
+    <tr><td>Seasonal on/off</td><td>Flag persists</td><td><span class="pass">Robust</span></td></tr>
+    </tbody></table>
+  </div></details>
+  <details><summary>Limitations</summary><div class="dd">Attribution of shortfall to specific provider groups carries ±3 pts uncertainty. May-26 immaturity limits current-month precision; excluded from baseline.</div></details>`;
+
+INV_TABS.lineage=(f)=>`
+  <div class="callout teal" style="margin-bottom:14px"><span class="ci">Consolidated finding</span><div>Four detection signals were consolidated into ANM-0142 because they share the same measure, segments, onset period, and refresh boundary. Relationship language stays cautious — signals are grouped, never asserted to cause one another.</div></div>
+  <div class="card" style="margin-bottom:14px"><div class="card-h">Component signals</div><div class="card-b"><table class="tbl">
+    <thead><tr><th>Method</th><th>Version</th><th>What it detected</th><th>Strength</th><th>Role</th><th>Triggered</th></tr></thead><tbody>
+    ${[['volume.trendbreak','v3.2','Outpatient volume break at 2026-02','Strong','Primary',true],
+       ['segment.divergence','v3.2','SA + ENC divergence','Strong','Supporting',true],
+       ['coverage.rosterdiff','v2.9','2 provider groups exited feed','Strong','Possible explanation',true],
+       ['runout.latency','v3.1','2026-05 immature','Weak','Contradicting',false]].map(r=>`
+      <tr><td class="mono">${r[0]}</td><td class="mono">${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td>
+        <td><span class="chip ${r[4]==='Primary'?'teal':r[4]==='Contradicting'?'red':'grey'}"><span class="cd"></span>${r[4]}</span></td>
+        <td>${r[5]?'<span class="pass">✓</span>':'<span class="muted">—</span>'}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="callout teal" style="margin-top:10px"><span class="ci">Grouping rationale</span><div>Same measure family, overlapping segments, common onset at the v2026.06 boundary. Relationship confidence: moderate–high.</div></div>
+  </div></div>
+  <div class="card"><div class="card-h">Related-findings actions</div><div class="card-b">
+    <div class="row"><button class="btn sm" ${can('edit')?'':'disabled'} onclick="lineageAct('linked ANM-0147 as contextual (denominator interaction)')">Link finding</button>
+    <button class="btn sm" ${can('edit')?'':'disabled'} onclick="lineageAct('marked coverage.rosterdiff as possibly-upstream of the volume break')">Mark possibly-upstream</button>
+    <button class="btn sm" ${can('edit')?'':'disabled'} onclick="lineageAct('separated runout.latency signal (contradicting)')">Separate signal</button></div>
+    <div class="callout amber" style="margin-top:10px"><span class="ci">⚠</span><div>Cautious language only — "possibly upstream", never "causes". All lineage edits are audit-logged.</div></div>
+  </div></div>`;
+function lineageAct(desc){ logAudit('Lineage edit: '+desc+'.'); toast('Lineage updated · logged'); }
+
+INV_TABS.review=(f)=>{
+  const questions=['Is the evidence sufficient?','Are alternative explanations ruled out?','Are the checks adequate?','Is the disposition supported?','Is the impact correctly scoped?','Is the monitoring plan appropriate?'];
+  if(!INV.submitted) return `<div class="callout purple"><span class="ci">i</span><div>This finding has not been submitted for review yet. Complete disposition & impact on the <a onclick="go('investigation','hypotheses')">Hypotheses & disposition</a> tab, then submit. High-impact findings (≥25% of cohort + likely data issue) fire the <b>GOV-R2</b> review trigger.</div></div>`;
+  const isReviewer = state.role==='reviewer';
+  return `
+  <div class="callout purple" style="margin-bottom:14px"><span class="ci">GOV-R2</span><div>Review trigger fired: finding affects ≥25% of cohort <b>and</b> carries a likely-data-issue disposition. Independent review is required before any report exists.</div></div>
+  <div class="card" style="margin-bottom:14px"><div class="card-h">Auto-assembled reviewer package</div><div class="card-b">
+    ${[['Evidence & chart','evidence'],['Contribution analysis','evidence'],['Hypotheses & checks','hypotheses'],['Disposition & quantified bias','hypotheses'],['Detection detail & sensitivity','detection'],['Signal lineage','lineage']].map(p=>
+      `<div class="between" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${p[0]}</span><a onclick="go('investigation','${p[1]}')">View →</a></div>`).join('')}
+  </div></div>
+  <div class="card" style="margin-bottom:14px"><div class="card-h">Six reviewer questions</div><div class="card-b">
+    ${questions.map((q,i)=>`<div class="between" style="padding:7px 0;border-bottom:1px solid var(--line)"><span>${i+1}. ${q}</span>
+      <div class="seg"><button class="${INV['rq'+i]==='yes'?'on':''}" ${isReviewer?'':'disabled'} onclick="rq(${i},'yes')">Satisfied</button><button class="${INV['rq'+i]==='no'?'on':''}" ${isReviewer?'':'disabled'} onclick="rq(${i},'no')">Concern</button></div></div>`).join('')}
+  </div></div>
+  <div class="card"><div class="card-h">Reviewer decision</div><div class="card-b">
+    ${INV.approved?`<div class="callout green"><span class="ci">✓</span><div>Approved with comments by Dr. L. Ferreira. Report <b class="mono">${INV.reportVersion}</b> created. Both analyst and reviewer positions preserved.</div></div>`:
+    isReviewer?`
+      <div class="small muted" style="margin-bottom:8px">Analyst position: <b>Likely data issue · data coverage</b> (preserved verbatim). Record your decision:</div>
+      <div class="row" style="gap:7px">
+        <button class="btn gov" onclick="reviewerApprove()">Approve with comments</button>
+        <button class="btn" onclick="toast('Returned to analyst with comments','gov')">Return</button>
+        <button class="btn" onclick="toast('Change-impact request logged','gov')">Change impact</button>
+        <button class="btn" onclick="toast('Hypothesis challenge logged','gov')">Challenge hypothesis</button>
+        <button class="btn" onclick="toast('Additional check requested','gov')">Request check</button>
+        <button class="btn" onclick="toast('Escalated','gov')">Escalate</button>
+        <button class="btn" onclick="toast('Marked unresolved','gov')">Mark unresolved</button>
+      </div>
+      <div class="callout purple" style="margin-top:12px"><span class="ci">i</span><div>Analyst and reviewer positions are preserved separately forever, even in disagreement.</div></div>`
+    :`<div class="callout amber"><span class="ci">🔒</span><div>Only the <b>Reviewer</b> role can act on a submitted finding. Switch role to Reviewer (Dr. L. Ferreira) in the header to approve, return, or challenge.</div></div>`}
+  </div></div>`;
+};
+function rq(i,v){ INV['rq'+i]=v; render(); }
+function reviewerApprove(){
+  INV.approved=true; INV.reportVersion='REP-2026-041 v1.0';
+  FINDINGS.find(f=>f.id==='ANM-0142').status='Closed — report';
+  logAudit('Reviewer approved INV-2026-041 with comments. Report REP-2026-041 v1.0 created (immutable, hash-stamped). Monitoring unlocked.','purple','Dr. L. Ferreira · Reviewer');
+  toast('Approved — report v1.0 created','gov'); go('investigation','review');
+}
+
+INV_TABS.activity=(f)=>`
+  <div class="grid" style="grid-template-columns:1.3fr .7fr">
+    <div class="card"><div class="card-h">Activity timeline <span class="r">append-only</span></div><div class="card-b">
+      ${AUDIT.slice().reverse().map(a=>`<div class="evrow" style="padding:9px 0">
+        <span class="em" style="width:118px">${a.ts}</span>
+        <span class="chip ${a.cat}" style="align-self:flex-start"><span class="cd"></span>${a.actor.split(' · ')[1]||a.actor.split(' · ')[0]}</span>
+        <span style="flex:1">${a.act}</span></div>`).join('')}
+    </div></div>
+    <div class="card"><div class="card-h">Traceability</div><div class="card-b small">
+      ${[['Dataset release',DATA.dataset.working],['Cohort version',DATA.cohort.id+' '+DATA.cohort.version],['Scan',DATA.scan.id],['Detector suite',DATA.scan.suite],['Report version',INV.reportVersion||'— (pre-approval)'],['Exports',INV.approved?'see Reports':'none yet']].map(r=>
+        `<div class="between" style="padding:5px 0;border-bottom:1px solid var(--line)"><span class="muted">${r[0]}</span><b class="mono">${r[1]}</b></div>`).join('')}
+    </div></div>
+  </div>`;
+
+/* ---- Monitoring ---- */
+SCREENS.monitoring=()=>{
+  const M=DATA.monitoring;
+  const approved = INV && INV.approved && INV.finding===M.configId;
+  return `
+  <div class="crumb"><a onclick="go('overview')">Findings</a><span class="sep">/</span>Monitoring</div>
+  <h1 class="page">Monitoring & recurrence</h1>
+  <p class="page-sub">A finding is never resolved merely because it is absent in one release. Resolution criteria are declared up front and evaluated per refresh.</p>
+  <div class="card" style="margin-bottom:14px"><div class="card-h">Monitored findings</div><div class="card-b"><table class="tbl">
+    <thead><tr><th>Finding</th><th>Monitoring state</th><th>Latest classification</th><th>Resolution criteria</th></tr></thead><tbody>
+    ${M.monitored.map(m=>`<tr><td class="mono">${m.id}</td><td><span class="chip amber"><span class="cd"></span>${m.state}</span></td>
+      <td><span class="chip ${m.latestChip}"><span class="cd"></span>${m.latest}</span></td><td class="small">${m.criteria}</td></tr>`).join('')}
+    <tr><td class="mono">${M.configId}</td><td><span class="chip grey"><span class="cd"></span>${approved?'Monitor next refresh':'Activates on report approval'}</span></td>
+      <td><span class="chip ${approved?'amber':'grey'}"><span class="cd"></span>${approved?'Improving':'—'}</span></td><td class="small">${M.configCriteria[0]} AND ${M.configCriteria[1].toLowerCase()}</td></tr>
+  </tbody></table></div></div>
+  <div class="grid" style="grid-template-columns:1.1fr .9fr">
+    <div class="card"><div class="card-h">${M.timelineId} recurrence timeline</div><div class="card-b">
+      ${expectedBandChart(M.timelineSeries,{h:180})}
+      <div class="callout amber" style="margin-top:10px"><span class="ci">Improving ≠ Resolved</span><div>${M.timelineNote}</div></div>
+    </div></div>
+    <div class="card"><div class="card-h">Monitoring configuration — ${M.configId}</div><div class="card-b">
+      <div class="small muted" style="margin-bottom:8px">Monitoring state</div>
+      <div class="row" style="gap:6px;margin-bottom:12px">
+      ${['No further monitoring','Monitor next refresh','Monitor for period','Monitor until resolved','Await vendor confirmation'].map((s,i)=>`<button class="btn sm ${i===3?'pri':''}">${s}</button>`).join('')}</div>
+      <div class="small muted" style="margin-bottom:6px">Resolution criteria</div>
+      ${M.configCriteria.map(c=>`<label class="row small" style="gap:7px;padding:4px 0"><input type="checkbox" checked ${approved?'':'disabled'}> ${c}</label>`).join('')}
+      <div class="callout ${approved?'green':'amber'}" style="margin-top:10px"><span class="ci">${approved?'✓':'🔒'}</span><div>${approved?'Monitoring active — evaluated each refresh.':'Activates on report approval of the driving investigation.'}</div></div>
+    </div></div>
+  </div>`;
+};
+
+/* ---- Dataset Refreshes ---- */
+SCREENS.refreshes=()=>{
+  const tab=state.tab||'summary';
+  return `
+  <div class="crumb"><a onclick="go('overview')">Workspace</a><span class="sep">/</span>Dataset Refreshes</div>
+  <h1 class="page">Dataset Refreshes <span class="mono" style="font-size:15px;color:var(--ink-3)">${DATA.dataset.working} → ${DATA.dataset.incoming}</span></h1>
+  <div class="tabs">${[['summary','Refresh summary'],['comparison','Release comparison'],['tracks','Scan tracks'],['decision','Release decision']].map(t=>
+    `<div class="tab ${tab===t[0]?'active':''}" onclick="go('refreshes','${t[0]}')">${t[1]}</div>`).join('')}</div>
+  ${REFRESH_TABS[tab]()}`;
+};
+const REFRESH_TABS={};
+REFRESH_TABS.summary=()=>`
+  <div class="kpis" style="margin-bottom:14px">
+    <div class="kpi"><div class="v">+4.21M</div><div class="k">Records added</div><div class="sub">1.9M backfill</div></div>
+    <div class="kpi"><div class="v">+312</div><div class="k">Patients (net)</div></div>
+    <div class="kpi"><div class="v">+941</div><div class="k">Providers</div><div class="sub">2 of 4 feeds restored</div></div>
+    <div class="kpi warn"><div class="v">14.2%</div><div class="k">POS missing (persistent)</div></div>
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr">
+    <div class="card"><div class="card-h">Processing & scan status</div><div class="card-b">
+      ${[['Ingestion','Completed'],['Validation rules','Completed'],['Cohort rebuild','Completed'],['Broad scan (Track 1)','Completed'],['Known-anomaly reassessment (Track 2)','Completed'],['POS-dependent detectors','Results withheld']].map(r=>`
+        <div class="between" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${r[0]}</span>
+        <span class="chip ${r[1]==='Results withheld'?'amber':'green'}"><span class="cd"></span>${r[1]}</span></div>`).join('')}
+      <div class="callout amber" style="margin-top:10px"><span class="ci">Visible quarantine</span><div>POS-dependent detectors return <b>Results withheld</b>, not silent nulls — POS missingness (ANM-0145) makes them unreliable.</div></div>
+    </div></div>
+    <div class="card"><div class="card-h">Anomaly timing counts</div><div class="card-b">
+      ${hbars([['Newly occurring',3,6,'var(--red)'],['Newly detected',2,6,'var(--amber)'],['Introduced by refresh',2,6,'var(--amber)'],['Recurring',2,6,'var(--teal)']])}
+      <div class="callout teal" style="margin-top:10px"><span class="ci">Track 1</span><div>Two new findings this refresh: ANM-0151 (priority 38) and ANM-0152 (priority 44).</div></div>
+    </div></div>
+  </div>`;
+REFRESH_TABS.comparison=()=>{
+  const rows=[['Cohort patient count','48,213','48,525','+0.6%','ok'],['Outpatient claims','1.84M','1.71M','−7.1%','bad'],['Providers','12,847','13,788','+7.3%','warn'],['Backfill rows','—','1.9M','new','warn'],['Revised records','—','+842K','revised','warn'],['Removed records','—','−31K','removed','warn'],['POS field missingness','2.0%','14.2%','+12.2 pts','bad'],['Duplicate signature','0.3%','0.4%','in range','ok'],['Codes appeared','—','214','in range','ok'],['Codes disappeared','—','I50.8x','flagged','bad'],['Latency (mean)','38d','36d','in range','ok'],['Composition drift (65+)','36.5%','41.2%','+4.7 pts','bad']];
+  return `<div class="card"><div class="card-h">Release comparison <span class="r">v2026.06 → v2026.07</span></div><div class="card-b"><table class="tbl">
+    <thead><tr><th>Metric</th><th>Old</th><th>New</th><th>Δ</th><th>Assessment</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="num">${r[2]}</td><td class="num ${r[4]==='bad'?'neg':''}">${r[3]}</td>
+      <td><span class="chip ${r[4]==='ok'?'green':r[4]==='warn'?'amber':'red'}"><span class="cd"></span>${r[4]==='ok'?'In range':r[4]==='warn'?'Watch':'Anomalous'}</span></td></tr>`).join('')}
+  </tbody></table></div></div>`;
+};
+REFRESH_TABS.tracks=()=>{
+  const post={labels:['Feb','Mar','Apr','May','Jun','Jul'],exp:Array(6).fill(439),lo:Array(6).fill(417),hi:Array(6).fill(461),obs:[352,349,347,352,368,385],onset:0,incompleteFrom:null};
+  return `
+  <div class="grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
+    <div class="card"><div class="card-h">Track 1 — broad cohort scan</div><div class="card-b">
+      <table class="tbl"><thead><tr><th>New finding</th><th>Family</th><th>Priority</th><th>Timing</th></tr></thead><tbody>
+      <tr><td class="mono">ANM-0151</td><td>Distribution shift</td><td class="num">38</td><td><span class="chip teal"><span class="cd"></span>Introduced by refresh</span></td></tr>
+      <tr><td class="mono">ANM-0152</td><td>Volume</td><td class="num">44</td><td><span class="chip teal"><span class="cd"></span>Newly detected</span></td></tr>
+      </tbody></table>
+    </div></div>
+    <div class="card"><div class="card-h">Track 2 — known-anomaly reassessment</div><div class="card-b">
+      <table class="tbl"><thead><tr><th>Finding</th><th>Was</th><th>Now</th><th>Classification</th></tr></thead><tbody>
+      <tr><td class="mono">ANM-0142</td><td class="num">−21.3%</td><td class="num">−12.4%</td><td><span class="chip amber"><span class="cd"></span>Improving</span></td></tr>
+      <tr><td class="mono">ANM-0145</td><td class="num">14.8%</td><td class="num">14.2%</td><td><span class="chip red"><span class="cd"></span>Persistent</span></td></tr>
+      <tr><td class="mono">ANM-0118</td><td class="num">−6%</td><td class="num">−3.1%</td><td><span class="chip amber"><span class="cd"></span>Improving</span></td></tr>
+      </tbody></table>
+    </div></div>
+  </div>
+  <div class="card"><div class="card-h">ANM-0142 post-refresh evidence <span class="r">partial backfill</span></div><div class="card-b">
+    ${expectedBandChart(post,{h:180})}
+    <div class="callout amber" style="margin-top:10px"><span class="ci">Improving ≠ Resolved</span><div>Partial backfill (2 of 4 feeds restored) lifts the shortfall to −12.4%. Classified <b>Improving</b> — resolution requires 2 in-range releases + roster restoration.</div></div>
+  </div></div>`;
+};
+REFRESH_TABS.decision=()=>{
+  const decided = DATA._v07decision;
+  const canDecide = (state.role==='analyst'||state.role==='reviewer');
+  return `
+  <div class="callout teal" style="margin-bottom:14px"><span class="ci">Scan-based recommendation</span><div>Recommended verdict for <b class="mono">v2026.07</b>: <b>Accept with restrictions</b>. Open findings ANM-0145/0142/0147/0149/0146 pre-fill the restriction checklist below.</div></div>
+  <div class="grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
+    <div class="card"><div class="card-h">Restrictions to carry with the release</div><div class="card-b">
+      ${['POS-dependent measures excluded (ANM-0145)','Outpatient utilization provisional for SA/ENC (ANM-0142)','Per-member rates flagged pending denominator fix (ANM-0147)','Facility paid amounts caveated (ANM-0149)','HF capture uses updated code list (ANM-0146)'].map(r=>
+        `<label class="row small" style="gap:7px;padding:5px 0;border-bottom:1px solid var(--line)"><input type="checkbox" checked ${decided?'disabled':''}> ${r}</label>`).join('')}
+    </div></div>
+    <div class="card"><div class="card-h">Record verdict</div><div class="card-b">
+      ${decided?`<div class="callout green"><span class="ci">✓</span><div>Recorded: <b>${decided.verdict}</b> by ${decided.by} · ${decided.ts}. Restrictions travel with the release and are visible to all consumers. Amendments create a new decision version.</div></div>`:
+      canDecide?`
+        <div class="small muted" style="margin-bottom:8px">Verdict (role-gated · Analyst or Reviewer)</div>
+        <div class="row" style="gap:8px;margin-bottom:10px">
+          <button class="btn pri" onclick="recordVerdict('Accepted')">Accept</button>
+          <button class="btn pri" onclick="recordVerdict('Accept with restrictions')">Accept with restrictions</button>
+          <button class="btn danger" onclick="holdModal()">Hold</button>
+        </div>
+        <div class="callout amber"><span class="ci">⚠</span><div><b>Hold</b> is destructive — requires a rationale and notifies the vendor and study teams.</div></div>`
+      :`<div class="callout amber"><span class="ci">🔒</span><div>Executive role is read-only. Release decisions require the Analyst or Reviewer role.</div></div>`}
+    </div></div>
+  </div>
+  <div class="card"><div class="card-h">Release decision register <span class="r">immutable</span></div><div class="card-b"><table class="tbl">
+    <thead><tr><th>Release</th><th>Verdict</th><th>Restrictions / note</th><th>Decided by</th><th>When</th></tr></thead><tbody>
+    ${RELEASES.map(r=>{ const v = r.v==='v2026.07'&&decided?decided.verdict:r.verdict;
+      const note = r.v==='v2026.07'&&decided?'Restrictions carried from open findings':r.note;
+      const by = r.v==='v2026.07'&&decided?decided.by:r.by; const ts=r.v==='v2026.07'&&decided?decided.ts:r.ts;
+      return `<tr><td class="mono">${r.v}</td>
+      <td><span class="chip ${v==='Held'?'red':v==='Accepted'?'green':v==='Pending'?'grey':'amber'}"><span class="cd"></span>${v}</span></td>
+      <td class="small">${note}</td><td class="small">${by}</td><td class="mono small">${ts}</td></tr>`;}).join('')}
+  </tbody></table></div></div>`;
+};
+function recordVerdict(v){
+  DATA._v07decision={verdict:v, by:(state.role==='reviewer'?'Dr. L. Ferreira':'M. Okafor'), ts:'2026-07-29'};
+  DATA.fitness.incoming=v; RELEASES.find(r=>r.v==='v2026.07').verdict=v;
+  logAudit(`Release decision recorded for v2026.07: ${v}. Restrictions stamped to release metadata.`,'teal');
+  toast('Release decision: '+v+' — visible on Overview'); render();
+}
+function holdModal(){
+  openModal(`<div class="modal"><div class="modal-h"><h3 style="color:var(--red)">Hold release v2026.07</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b"><div class="callout red"><span class="ci">⚠</span><div>Holding rejects the release and triggers a re-delivery loop. The vendor and dependent study teams are notified.</div></div>
+  <div style="margin-top:12px"><label class="small muted">Rationale (required)</label>
+  <textarea id="holdReason" style="width:100%;margin-top:5px;border:1px solid var(--line-strong);border-radius:7px;padding:9px;font-family:inherit;font-size:13px" rows="3" placeholder="e.g. POS missingness and denominator defect exceed acceptable thresholds for dependent studies"></textarea></div></div>
+  <div class="modal-f"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn danger" onclick="doHold()">Confirm hold & notify</button></div></div>`);
+}
+function doHold(){
+  const r=document.getElementById('holdReason').value.trim();
+  if(!r){ toast('Rationale required to hold'); return; }
+  DATA._v07decision={verdict:'Held', by:(state.role==='reviewer'?'Dr. L. Ferreira':'M. Okafor'), ts:'2026-07-29'};
+  RELEASES.find(x=>x.v==='v2026.07').verdict='Held';
+  logAudit('Release v2026.07 HELD. Rationale: '+r+'. Vendor + study teams notified.','red');
+  closeModal(); toast('Release held — vendor & study teams notified','gov'); render();
+}
+
+/* ---- Study Impact ---- */
+SCREENS['study-impact']=()=>{
+  return `
+  <div class="crumb"><a onclick="go('overview')">Governance</a><span class="sep">/</span>Study Impact</div>
+  <h1 class="page">Study Impact registry</h1>
+  <p class="page-sub">Maps findings → affected measures & periods → dependent studies → proceed/pause decisions. A DQ recommendation is not a decision — decisions are joint (study owner + DQ) and audit-logged.</p>
+  <div class="kpis" style="margin-bottom:14px">
+    <div class="kpi"><div class="v">${STUDIES.length}</div><div class="k">Linked studies</div></div>
+    <div class="kpi warn"><div class="v">${STUDIES.filter(s=>s.decision==='Pause').length}</div><div class="k">Paused</div></div>
+    <div class="kpi gov"><div class="v">${STUDIES.filter(s=>s.decision==='Pending').length}</div><div class="k">Pending decisions</div></div>
+    <div class="kpi"><div class="v">2</div><div class="k">Quarantined measure-periods</div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px"><div class="card-h">Quantified bias — across open findings</div><div class="card-b"><table class="tbl">
+    <thead><tr><th>Measure family</th><th>Direction</th><th>Magnitude</th><th>Strata · periods</th><th>Driving finding</th></tr></thead><tbody>
+    ${BIAS.map(b=>`<tr><td>${b.measure}</td>
+      <td><span class="chip ${b.dirType==='ok'?'green':'red'}"><span class="cd"></span>${b.dir}</span></td>
+      <td class="mono small">${b.mag}</td><td class="small">${b.strata}</td><td class="mono small">${b.driver}</td></tr>`).join('')}
+  </tbody></table></div></div>
+  <div class="card"><div class="card-h">Dependent studies</div><div class="card-b"><table class="tbl">
+    <thead><tr><th>Study</th><th>Consumed measures</th><th>Affected by</th><th>DQ recommendation</th><th>Decision</th><th></th></tr></thead><tbody>
+    ${STUDIES.map(s=>`<tr><td><b>${s.id}</b><div class="muted xsmall">${s.name}</div></td>
+      <td class="small">${s.measures}</td>
+      <td class="small mono">${s.findings.join(', ')}</td>
+      <td><span class="chip ${s.rec==='Pause'?'red':'amber'}"><span class="cd"></span>${s.rec}</span></td>
+      <td><span class="chip ${s.decision==='Pause'?'red':s.decision==='Pending'?'grey':'amber'}"><span class="cd"></span>${s.decision}</span>${s.by!=='—'?`<div class="muted xsmall">${s.by}</div>`:''}</td>
+      <td>${s.decision==='Pending'&&can('edit')?`<button class="btn sm pri" onclick="decideStudy('${s.id}')">Decide</button>`:''}</td></tr>`).join('')}
+  </tbody></table>
+    <div class="row" style="margin-top:12px"><button class="btn" onclick="notifyModal()">Notify affected study teams</button></div>
+  </div></div>`;
+};
+function decideStudy(id){
+  const s=STUDIES.find(x=>x.id===id);
+  openModal(`<div class="modal"><div class="modal-h"><h3>Study decision — ${s.id} ${s.name}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b">
+    <div class="small muted">Affected by <b class="mono">${s.findings.join(', ')}</b>. DQ recommendation: <b>${s.rec}</b>.</div>
+    <div class="callout teal" style="margin:12px 0"><span class="ci">i</span><div>Recommendation ≠ decision. This is a joint decision (study owner + DQ) and is audit-logged.</div></div>
+    <div class="small muted" style="margin-bottom:6px">Record joint decision</div>
+    <div class="row"><button class="btn pri" onclick="setStudy('${id}','Proceed')">Proceed</button>
+    <button class="btn pri" onclick="setStudy('${id}','Proceed with caveats')">Proceed with caveats</button>
+    <button class="btn danger" onclick="setStudy('${id}','Pause')">Pause</button></div>
+  </div></div>`);
+}
+function setStudy(id,d){ const s=STUDIES.find(x=>x.id===id); s.decision=d; s.by='Joint · 2026-07-29';
+  logAudit(`Study decision recorded — ${id}: ${d} (joint study owner + DQ).`,'teal'); closeModal(); toast(`${id}: ${d}`); render(); }
+function notifyModal(){
+  openModal(`<div class="modal wide"><div class="modal-h"><h3>Notify affected study teams</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b"><div class="small muted" style="margin-bottom:10px">Preview of the actual notice before send. Per-study bias statements and active restrictions are included.</div>
+  ${STUDIES.filter(s=>s.findings.length).map(s=>`<div class="card" style="margin-bottom:10px"><div class="card-b small">
+    <b>${s.id} — ${s.name}</b><div class="muted xsmall mono" style="margin:3px 0">Affected by ${s.findings.join(', ')}</div>
+    <div>DQ recommendation: <b>${s.rec}</b>. ${s.biasStatement||''}</div>
+  </div></div>`).join('')}</div>
+  <div class="modal-f"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" onclick="sendNotify()">Send notice</button></div></div>`);
+}
+function sendNotify(){ logAudit('Study-team notification sent (contents archived to audit trail).','teal'); closeModal(); toast('Notice sent — contents archived','gov'); }
+
+/* ---- Vendor Management ---- */
+SCREENS.vendor=()=>{
+  return `
+  <div class="crumb"><a onclick="go('overview')">Governance</a><span class="sep">/</span>Vendor Management</div>
+  <div class="between"><h1 class="page">Vendor Management — ${DATA.dataset.vendor}</h1>
+    <div class="row"><span class="tag">Contract MHD-2024-114</span><span class="chip amber"><span class="cd"></span>Renewal window: 2026-11</span></div></div>
+  <div class="kpis" style="margin:12px 0 14px">
+    <div class="kpi"><div class="v">10/12</div><div class="k">On-time releases</div></div>
+    <div class="kpi warn"><div class="v">3</div><div class="k">Open escalations</div></div>
+    <div class="kpi"><div class="v">89%</div><div class="k">SLA compliance</div></div>
+    <div class="kpi"><div class="v">6/7</div><div class="k">Remediations verified</div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px"><div class="card-h">Escalation tickets</div><div class="card-b"><table class="tbl">
+    <thead><tr><th>Ticket</th><th>Finding</th><th>Title</th><th>Status</th><th>SLA</th><th>Verification</th></tr></thead><tbody>
+    ${TICKETS.map(t=>`<tr class="click" onclick="ticketModal('${t.id}')">
+      <td class="mono">${t.id}</td><td class="mono">${t.finding}</td><td class="small">${t.title}</td>
+      <td><span class="chip grey"><span class="cd"></span>${t.status}</span></td>
+      <td><span class="chip ${t.sla==='At risk'?'amber':t.sla==='Breached'?'red':'green'}"><span class="cd"></span>${t.sla}</span></td>
+      <td class="small">${t.verState}</td></tr>`).join('')}
+  </tbody></table></div></div>
+  <div class="grid" style="grid-template-columns:1fr 1fr">
+    <div class="card"><div class="card-h">Findings per release <span class="r">priority-weighted</span></div><div class="card-b">
+      ${hbars([['v2026.02',3,6],['v2026.03',5,6],['v2026.04',4,6],['v2026.05',2,6],['v2026.06',6,6,'var(--amber)'],['v2026.07',2,6]].map(r=>[r[0],r[1],6,r[3]||'var(--teal)']))}
+    </div></div>
+    <div class="card"><div class="card-h">Scorecard inputs</div><div class="card-b small">
+      ${[['Recurring root cause','Feed roster instability (3 releases)'],['Backfill reliability','Moderate — partial restorations'],['Remediation verification rate','6 of 7 (86%)'],['Renewal input note','Coverage-loss pattern to raise at 2026-11 renewal']].map(r=>
+        `<div class="between" style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="muted">${r[0]}</span><b style="text-align:right;max-width:55%">${r[1]}</b></div>`).join('')}
+    </div></div>
+  </div>`;
+};
+function ticketModal(id){
+  const t=TICKETS.find(x=>x.id===id);
+  openModal(`<div class="modal wide"><div class="modal-h"><span class="mono" style="font-weight:600">${t.id}</span><h3 style="margin-left:6px">${t.title}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b">
+    <div class="row" style="gap:6px;margin-bottom:12px"><span class="chip grey"><span class="cd"></span>${t.status}</span>
+      <span class="chip ${t.sla==='At risk'?'amber':'green'}"><span class="cd"></span>SLA ${t.sla}</span>
+      <span class="tag">Finding ${t.finding}</span><span class="tag">Opened ${t.opened}</span></div>
+    <div class="card" style="margin-bottom:12px"><div class="card-h">Escalation package manifest</div><div class="card-b small">
+      ${['Evidence charts (observed vs expected band)','Segment / period scope','Quantified impact table','Provider roster & field diffs'].map(m=>`<div class="row" style="padding:4px 0"><span class="pass">✓</span> ${m}</div>`).join('')}
+      <div class="callout amber" style="margin-top:8px"><span class="ci">🔒</span><div>Patient-level evidence is excluded from the vendor package by default.</div></div>
+    </div></div>
+    <div class="card" style="margin-bottom:12px"><div class="card-h">Exchange timeline</div><div class="card-b">
+      ${[['Escalated',t.opened],['Acknowledged','+2d'],['RCA in progress','+5d'],[t.id==='VND-2025-009'?'Remediation delivered':'Awaiting remediation',t.id==='VND-2025-009'?'+30d':'—']].map(e=>
+        `<div class="evrow"><span class="em" style="width:70px">${e[1]}</span><span>${e[0]}</span></div>`).join('')}
+    </div></div>
+    <div class="card"><div class="card-h">Remediation verification</div><div class="card-b">
+      <div class="small">Criteria (mirror monitoring): <b>${t.verify}</b></div>
+      <div class="small" style="margin-top:5px">State: <b>${t.verState}</b></div>
+      <button class="btn ${t.locked?'':'pri'} sm" style="margin-top:10px" disabled>Verify remediation</button>
+      <div class="locknote">🔒 Verification locked until criteria are met — a vendor's "fixed" claim is never sufficient.</div>
+    </div></div>
+  </div>
+  <div class="modal-f"><button class="btn" onclick="sendReminder('${t.id}')">Send SLA reminder</button><button class="btn" onclick="closeModal()">Close</button></div></div>`);
+}
+function sendReminder(id){ logAudit('SLA reminder sent for '+id+'.','teal'); toast('SLA reminder sent · logged'); }
+
+/* ---- Reports ---- */
+SCREENS.reports=()=>{
+  if(!INV || !INV.developed){
+    const reps=FINDINGS.filter(f=>f.report);
+    return `
+    <div class="crumb"><a onclick="go('overview')">Governance</a><span class="sep">/</span>Reports</div>
+    <h1 class="page">Reports</h1>
+    <div class="callout teal" style="margin-bottom:14px"><span class="ci">i</span><div>Live reports exist only after reviewer approval of an investigation. In this prototype the full report / export flow is worked through on the claims dataset; for ${DATA.dataset.name}, approved reports are listed below.</div></div>
+    <div class="card"><div class="card-h">Reports for this dataset</div><div class="card-b"><table class="tbl">
+      <thead><tr><th>Report</th><th>Finding</th><th>Version</th><th>Status</th></tr></thead><tbody>
+      ${reps.length?reps.map(f=>`<tr><td class="mono">${f.report}</td><td class="mono">${f.id}</td><td class="mono">v1.0</td><td><span class="chip green"><span class="cd"></span>Approved</span></td></tr>`).join(''):`<tr><td colspan="4" class="muted small">No approved reports yet — investigate and approve a finding to create one.</td></tr>`}
+    </tbody></table></div></div>`;
+  }
+  if(!INV.approved){
+    return `
+    <div class="crumb"><a onclick="go('overview')">Governance</a><span class="sep">/</span>Reports</div>
+    <h1 class="page">Reports</h1>
+    <div class="card" style="margin-bottom:14px"><div class="card-b" style="text-align:center;padding:36px">
+      <div style="font-size:34px;opacity:.3">▤</div>
+      <h3 style="margin:10px 0 4px">No live report for ANM-0142 yet</h3>
+      <p class="muted small" style="max-width:52ch;margin:0 auto 14px">The report is the system of record and exists only after reviewer approval. INV-2026-041 is currently at the <b>${INV.submitted?'Review':'Disposition'}</b> stage.</p>
+      <button class="btn pri" onclick="go('investigation','${INV.submitted?'review':'hypotheses'}')">Go to investigation →</button>
+    </div></div>
+    <div class="card"><div class="card-h">Other reports</div><div class="card-b"><table class="tbl">
+      <thead><tr><th>Report</th><th>Finding</th><th>Version</th><th>Status</th></tr></thead><tbody>
+      <tr><td class="mono">REP-2026-038</td><td class="mono">ANM-0118</td><td class="mono">v1.0</td><td><span class="chip green"><span class="cd"></span>Approved</span></td></tr>
+    </tbody></table></div></div>`;
+  }
+  const secs=['Finding','Scope','Evidence','Contribution','Hypotheses','Checks','Final assessment','Impact (incl. quantified bias)','Recommendation','Governance & audit','Limitations','Monitoring plan'];
+  return `
+  <div class="crumb"><a onclick="go('overview')">Governance</a><span class="sep">/</span>Reports</div>
+  <div class="between"><h1 class="page">Live report — REP-2026-041 <span class="chip green" style="vertical-align:middle"><span class="cd"></span>v1.0 · immutable</span></h1>
+    <span class="tag">hash 0x9f2a…c71b</span></div>
+  <div class="grid" style="grid-template-columns:1.4fr .6fr;margin-top:12px">
+    <div class="card"><div class="card-h">Report sections <span class="r">12 · approved conclusions locked</span></div><div class="card-b">
+      ${secs.map((s,i)=>`<details ${i<2?'open':''}><summary>${i+1}. ${s}</summary><div class="dd">${
+        i===2?expectedBandChart(INV.series,{h:150}):
+        i===7?'Outpatient utilization underestimated 8–10% cohort-wide (15–20% affected divisions); cost PPPM 6–9%; pharmacy & enrollment unaffected. Bounds ±3 pts.':
+        i===8?'Treat outpatient & cost measures for SA/ENC as provisional this release; proceed on pharmacy/enrollment.':
+        'Approved content — see investigation INV-2026-041.'}</div></details>`).join('')}
+      <div class="callout teal" style="margin-top:10px"><span class="ci">i</span><div>Permitted view filters can re-slice the evidence chart but cannot alter approved conclusions. Amendments create v1.1.</div></div>
+    </div></div>
+    <div class="card"><div class="card-h">Export</div><div class="card-b">
+      <div class="small muted" style="margin-bottom:8px">4 modes · row-level excluded by default</div>
+      ${['Executive summary','Detailed technical','Vendor-facing','Internal investigation'].map(m=>`
+        <div class="between" style="padding:7px 0;border-bottom:1px solid var(--line)">
+          <div><b class="small">${m}</b><div class="muted xsmall">${m==='Executive summary'?'4-slide PPTX preview':m==='Detailed technical'?'18-page PDF preview':m==='Vendor-facing'?'strips internal study refs':'full investigation PDF'}</div></div>
+          <button class="btn sm" onclick="exportReport('${m}')">Generate</button></div>`).join('')}
+      <div class="divider"></div>
+      <div class="small muted">Traceability</div>
+      <div class="small mono" style="margin-top:4px">${DATA.dataset.working} · ${DATA.cohort.id} ${DATA.cohort.version} · ${DATA.scan.id} · suite ${DATA.scan.suite}</div>
+    </div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="card-h">Periodic reports</div><div class="card-b">
+    <div class="between"><div><b class="small">Monthly DQ summary — June 2026</b><div class="muted xsmall">Approved · auto-drafted from release register + findings + study impact + vendor scorecard</div></div>
+      <button class="btn sm" onclick="periodicModal()">Preview</button></div>
+    <div class="between" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)"><div><b class="small">Monthly DQ summary — July 2026</b><div class="muted xsmall">Auto-drafting…</div></div>
+      <span class="chip amber"><span class="cd"></span>In progress</span></div>
+  </div></div>`;
+};
+function exportReport(mode){ logAudit(`Export generated: ${mode} (source REP-2026-041 v1.0; row-level excluded).`,'teal'); toast(`${mode} exported · logged`); }
+function periodicModal(){
+  openModal(`<div class="modal"><div class="modal-h"><h3>Monthly DQ summary — June 2026</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b small">
+    <p><b>Release acceptance:</b> v2026.06 accepted with restrictions (POS exclusion; utilization provisional). v2026.03 held 6 days.</p>
+    <p><b>Findings:</b> 9 open; 1 approved report (REP-2026-041); 2 in monitoring.</p>
+    <p><b>Study impact:</b> 2 studies paused (ST-204, ST-211); 1 pending (ST-198); 1 proceeding with caveats (ST-186).</p>
+    <p><b>Vendor:</b> SLA compliance 89%; 3 open escalations; recurring root cause = feed roster instability.</p>
+  </div>
+  <div class="modal-f"><button class="btn" onclick="closeModal()">Close</button></div></div>`);
+}
+
+/* ============================================================
+   FOOTER + BOOT
+   ============================================================ */
+const origRender = render;
+render = function(){ origRender(); const m=document.querySelector('main');
+  if(m){ const fn=document.createElement('div'); fn.className='foot-note';
+    fn.innerHTML='Synthetic / prototype data — all entities are fictional. Replace this note with the environment banner in production. RWD Sentinel v1.0.';
+    m.appendChild(fn);} };
+render();
+</script>
+</body>
+</html>
