@@ -2,14 +2,18 @@
 window.SYN_FINDINGS = [
  {
   "id": "ANM-S001",
-  "family": "Note–coding incongruence",
-  "title": "Note–coding incongruence: 20 claims flagged — note↔code mismatch",
-  "summary": "Unsupervised peer-group scan surfaced 20 claims exhibiting clinical note semantics inconsistent with the coded/structured claim. Concentrated in wellness · ambulatory · outpatient. Mean anomaly score 0.98; drill down to the triggering claims below.",
-  "measure": "Note↔code semantic agreement",
+  "family": "The note doesn't match the code",
+  "kind": "The note doesn't match the code",
+  "title": "The note doesn't match the code — 20 claims flagged",
+  "summary": "20 claims where the written clinical note describes something different from what the claim is coded and billed as. Most are wellness / ambulatory / outpatient visits.",
+  "what": "The written clinical note describes something different from what the claim is coded and billed as.",
+  "whyFlag": "When the story in the note and the billing code disagree, one of them is probably wrong — a mis-picked code, a note attached to the wrong visit, or a template that was never updated.",
+  "check": "Read the note against the code, decide which reflects what actually happened, and correct the other.",
+  "measure": "Note vs. code agreement",
   "segment": "wellness · ambulatory · outpatient",
   "period": "2019-01 → 2026-05",
-  "magnitude": "note↔code mismatch",
-  "reach": "20 claims · 0.4% of scanned",
+  "magnitude": "note and code disagree",
+  "reach": "20 claims · 0.4% of all scanned",
   "confidence": "High",
   "persistence": "Point-in-time",
   "dqrisk": "Suspected data issue",
@@ -27,7 +31,7 @@ window.SYN_FINDINGS = [
    "Recency": 86,
    "Data-quality risk": 60
   },
-  "why": "Peer-group ensemble ranked these claims at the top of the note–coding incongruence cluster; 20 records, reach 0.4% of the scanned population.",
+  "why": "When the story in the note and the billing code disagree, one of them is probably wrong — a mis-picked code, a note attached to the wrong visit, or a template that was never updated.",
   "evidence": [
    {
     "claim_id": "7c50e28d",
@@ -153,14 +157,18 @@ window.SYN_FINDINGS = [
  },
  {
   "id": "ANM-S002",
-  "family": "Demographic–clinical conflict",
-  "title": "Demographic–clinical conflict: 15 claims flagged — adult/geriatric procedure on age ≤3",
-  "summary": "Unsupervised peer-group scan surfaced 15 claims exhibiting patient age contradicts the documented procedure. Concentrated in wellness · outpatient · home. Mean anomaly score 0.98; drill down to the triggering claims below.",
-  "measure": "Age × procedure consistency",
+  "family": "Procedure doesn't fit the patient's age",
+  "kind": "Procedure doesn't fit the patient's age",
+  "title": "Procedure doesn't fit the patient's age — 15 claims flagged",
+  "summary": "15 claims where the procedure on the claim can't reasonably belong to a patient of that age. Most are wellness / outpatient / home visits.",
+  "what": "The procedure on the claim can't reasonably belong to a patient of that age.",
+  "whyFlag": "An adult or elderly procedure on an infant is clinically impossible — it almost always means the wrong patient, the wrong code, or a data mix-up during import, not care that was actually delivered.",
+  "check": "Verify the patient's date of birth and the procedure codes against the source record.",
+  "measure": "Age vs. procedure consistency",
   "segment": "wellness · outpatient · home",
   "period": "2019-01 → 2026-05",
-  "magnitude": "adult/geriatric procedure on age ≤3",
-  "reach": "15 claims · 0.3% of scanned",
+  "magnitude": "adult surgery coded on a child aged 3 or under",
+  "reach": "15 claims · 0.3% of all scanned",
   "confidence": "High",
   "persistence": "Point-in-time",
   "dqrisk": "Confirmed data issue",
@@ -178,7 +186,7 @@ window.SYN_FINDINGS = [
    "Recency": 86,
    "Data-quality risk": 92
   },
-  "why": "Peer-group ensemble ranked these claims at the top of the demographic–clinical conflict cluster; 15 records, reach 0.3% of the scanned population.",
+  "why": "An adult or elderly procedure on an infant is clinically impossible — it almost always means the wrong patient, the wrong code, or a data mix-up during import, not care that was actually delivered.",
   "evidence": [
    {
     "claim_id": "33d283d8",
@@ -304,14 +312,18 @@ window.SYN_FINDINGS = [
  },
  {
   "id": "ANM-S003",
-  "family": "Multivariate cohort outlier",
-  "title": "Multivariate cohort outlier: 19 claims flagged — peer-relative multivariate",
-  "summary": "Unsupervised peer-group scan surfaced 19 claims exhibiting jointly unusual across numeric + text features vs. same-type peers. Concentrated in wellness · outpatient · emergency. Mean anomaly score 0.98; drill down to the triggering claims below.",
-  "measure": "Multivariate density (peer-relative)",
+  "family": "Doesn't look like its peers",
+  "kind": "Doesn't look like its peers",
+  "title": "Doesn't look like its peers — 19 claims flagged",
+  "summary": "19 claims where no single field is clearly wrong, but the whole claim is unlike any other claim of its type. Most are wellness / outpatient / emergency visits.",
+  "what": "No single field is clearly wrong, but the whole claim is unlike any other claim of its type.",
+  "whyFlag": "Some problems don't show up in any one field; they only stand out when you look at everything together. This is a 'something's off here' flag rather than a specific broken rule.",
+  "check": "Review the claim end-to-end and treat it as a prompt to look, not a confirmed error.",
+  "measure": "Overall similarity to peers",
   "segment": "wellness · outpatient · emergency",
   "period": "2019-01 → 2026-05",
-  "magnitude": "peer-relative multivariate",
-  "reach": "19 claims · 0.3% of scanned",
+  "magnitude": "unusual combination overall",
+  "reach": "19 claims · 0.3% of all scanned",
   "confidence": "High",
   "persistence": "Point-in-time",
   "dqrisk": "Suspected data issue",
@@ -329,7 +341,7 @@ window.SYN_FINDINGS = [
    "Recency": 86,
    "Data-quality risk": 60
   },
-  "why": "Peer-group ensemble ranked these claims at the top of the multivariate cohort outlier cluster; 19 records, reach 0.3% of the scanned population.",
+  "why": "Some problems don't show up in any one field; they only stand out when you look at everything together. This is a 'something's off here' flag rather than a specific broken rule.",
   "evidence": [
    {
     "claim_id": "ba6ea998",
@@ -455,14 +467,18 @@ window.SYN_FINDINGS = [
  },
  {
   "id": "ANM-S004",
-  "family": "Cost outlier",
-  "title": "Cost outlier: 2 claims flagged — up to 92× cohort median",
-  "summary": "Unsupervised peer-group scan surfaced 2 claims exhibiting billed amount far beyond peer distribution. Concentrated in emergency · urgentcare. Mean anomaly score 0.97; drill down to the triggering claims below.",
+  "family": "Unusually large bill",
+  "kind": "Unusually large bill",
+  "title": "Unusually large bill — 2 claims flagged",
+  "summary": "2 claims where the amount billed is far higher than similar visits normally cost. Most are emergency / urgentcare visits.",
+  "what": "The amount billed is far higher than similar visits normally cost.",
+  "whyFlag": "A bill many times higher than its peers is often an extra digit keyed by mistake, a duplicated charge, or a genuinely exceptional case — all worth confirming before the number is used.",
+  "check": "Compare the billed amount to the procedures actually on the claim, and check for a misplaced decimal or a duplicated line.",
   "measure": "Billed amount per claim",
   "segment": "emergency · urgentcare",
   "period": "2019-01 → 2026-05",
-  "magnitude": "up to 92× cohort median",
-  "reach": "2 claims · 0.0% of scanned",
+  "magnitude": "up to 92× the typical bill",
+  "reach": "2 claims · 0.0% of all scanned",
   "confidence": "High",
   "persistence": "Point-in-time",
   "dqrisk": "Likely data issue",
@@ -480,7 +496,7 @@ window.SYN_FINDINGS = [
    "Recency": 86,
    "Data-quality risk": 74
   },
-  "why": "Peer-group ensemble ranked these claims at the top of the cost outlier cluster; 2 records, reach 0.0% of the scanned population.",
+  "why": "A bill many times higher than its peers is often an extra digit keyed by mistake, a duplicated charge, or a genuinely exceptional case — all worth confirming before the number is used.",
   "evidence": [
    {
     "claim_id": "20447ad5",
@@ -506,14 +522,18 @@ window.SYN_FINDINGS = [
  },
  {
   "id": "ANM-S005",
-  "family": "Line-item concentration",
-  "title": "Line-item concentration: 4 claims flagged — up to 247 lines/claim",
-  "summary": "Unsupervised peer-group scan surfaced 4 claims exhibiting implausible procedure/line-item count on a single claim. Concentrated in wellness · ambulatory. Mean anomaly score 0.97; drill down to the triggering claims below.",
+  "family": "Too many procedures on one claim",
+  "kind": "Too many procedures on one claim",
+  "title": "Too many procedures on one claim — 4 claims flagged",
+  "summary": "4 claims where a single claim lists far more procedure lines than that kind of visit ever would. Most are wellness / ambulatory visits.",
+  "what": "A single claim lists far more procedure lines than that kind of visit ever would.",
+  "whyFlag": "A routine visit doesn't involve hundreds of procedures. A pile-up of line items usually means duplicated lines, several visits merged into one claim, or an export error.",
+  "check": "Look for repeated identical lines and confirm the claim isn't several encounters rolled into one.",
   "measure": "Procedure lines per claim",
   "segment": "wellness · ambulatory",
   "period": "2019-01 → 2026-05",
-  "magnitude": "up to 247 lines/claim",
-  "reach": "4 claims · 0.1% of scanned",
+  "magnitude": "up to 247 procedure lines on one claim",
+  "reach": "4 claims · 0.1% of all scanned",
   "confidence": "High",
   "persistence": "Point-in-time",
   "dqrisk": "Likely data issue",
@@ -531,7 +551,7 @@ window.SYN_FINDINGS = [
    "Recency": 86,
    "Data-quality risk": 74
   },
-  "why": "Peer-group ensemble ranked these claims at the top of the line-item concentration cluster; 4 records, reach 0.1% of the scanned population.",
+  "why": "A routine visit doesn't involve hundreds of procedures. A pile-up of line items usually means duplicated lines, several visits merged into one claim, or an export error.",
   "evidence": [
    {
     "claim_id": "ad41b3b5",
@@ -576,7 +596,7 @@ window.SYN_FINDINGS = [
   ]
  }
 ];
-window.SYN_FAMILIES = [["Cost outlier", "Billed amount far beyond peer distribution"], ["Line-item concentration", "Implausible procedure/line-item count on a single claim"], ["Demographic–clinical conflict", "Patient age contradicts the documented procedure"], ["Note–coding incongruence", "Clinical note semantics inconsistent with the coded/structured claim"], ["Multivariate cohort outlier", "Jointly unusual across numeric + text features vs. same-type peers"]];
+window.SYN_FAMILIES = [["Unusually large bill", "The amount billed is far higher than similar visits normally cost"], ["Too many procedures on one claim", "A single claim lists far more procedure lines than that kind of visit ever would"], ["Procedure doesn't fit the patient's age", "The procedure on the claim can't reasonably belong to a patient of that age"], ["The note doesn't match the code", "The written clinical note describes something different from what the claim is coded and billed as"], ["Doesn't look like its peers", "No single field is clearly wrong, but the whole claim is unlike any other claim of its type"]];
 window.SYN_META = {
  "dataset": {
   "id": "SYN-001",
@@ -749,9 +769,9 @@ window.SYN_META = {
    ]
   ],
   "scanConfig": {
-   "suite": "mixed-mode v1.0",
-   "baseline": "peer-group (per encounter class)",
-   "fdr": "rank-ensemble · ClinicalBERT + IForest/LOF/KNN/AE"
+   "suite": "claims anomaly scan v1.0",
+   "baseline": "compared within each visit type",
+   "fdr": "reads the bill, the procedures, the age, and the note together"
   }
  },
  "profile": {
@@ -799,10 +819,10 @@ window.SYN_META = {
     44
    ]
   ],
-  "note": "The tail-period markers relate to ANM-S004 (cost/line-item outliers surfaced by the scan). Trend is illustrative for the synthetic scan.",
+  "note": "The out-of-range markers relate to ANM-S001 (the unusually large bills the scan flagged). Trend is illustrative for this synthetic sample.",
   "seriesRef": "syn",
   "unit": "Flagged claims / 1,000",
-  "relFinding": "ANM-S004"
+  "relFinding": "ANM-S001"
  },
  "synSeries": {
   "labels": [
@@ -889,5 +909,5 @@ window.SYN_META = {
   "approval": "synthetic"
  }
 };
-window.SYN_AUDIT = [{"ts": "2026-07-29 09:00", "act": "Unsupervised mixed-mode scan (ClinicalBERT + peer-group ensemble) over 5,473 claims consolidated 60 top-scoring records into 5 findings across 5 families.", "cat": "teal", "actor": "System · claims-anomaly-pipeline"}];
+window.SYN_AUDIT = [{"ts": "2026-07-29 09:00", "act": "Scan reviewed 5,473 claims and flagged 60 that don't look right, grouped into 5 kinds of problem.", "cat": "teal", "actor": "System · claims anomaly scan"}];
 window.SYN_SUMMARY = {"scanned": 5473, "flagged": 60, "findings": 5, "families": 5};
