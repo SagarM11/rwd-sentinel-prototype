@@ -575,6 +575,33 @@ Object.assign(EHR_DATA, { monitoring:{
 const CLAIMS_BIAS_STMT={'ST-204':'Outpatient utilization underestimated 8–10% cohort-wide (15–20% in affected divisions), 2026-02→04.','ST-211':'POS-based setting mix withheld this release.','ST-198':'Outpatient utilization provisional; HF capture −3.4% at the code boundary.','ST-186':'Per-member rates deflated ≈2.5% pending denominator fix.'};
 CLAIMS_STUDIES.forEach(s=>{ s.biasStatement = CLAIMS_BIAS_STMT[s.id]||''; });
 
+/* ---------- Decision 2: two orthogonal axes — signature × affected-property ----------
+   The single "family" label mixed signatures, mechanisms and data properties. We tag each
+   finding with what you can KNOW at detection: its statistical SIGNATURE and the QUALITY
+   PROPERTY at risk (Kahn/OHDSI-aligned). Mechanism stays where it belongs — an accepted
+   hypothesis on the investigation. Property is the stable, cross-dataset-comparable bucket. */
+const PROPERTY_ORDER=['Completeness','Plausibility','Conformance','Coverage','Timeliness','Uniqueness'];
+const PROPERTY_DESC={
+  Completeness:'Are the records/fields that should be here actually here?',
+  Plausibility:'Are the values believable / internally consistent?',
+  Conformance:'Do values match required formats, code sets and relationships?',
+  Coverage:'Are all expected sources / providers / regions represented?',
+  Timeliness:'Are dates and latencies correct and current?',
+  Uniqueness:'Are records free of duplication / overlap?'
+};
+const FINDING_AXES={
+  'ANM-0142':['Level shift','Coverage'], 'ANM-0145':['Level shift','Completeness'],
+  'ANM-0147':['Ratio / consistency break','Uniqueness'], 'ANM-0139':['Distribution shift','Completeness'],
+  'ANM-0136':['Ratio / consistency break','Uniqueness'], 'ANM-0131':['Distribution shift','Coverage'],
+  'ANM-0149':['Ratio / consistency break','Completeness'], 'ANM-0146':['Level shift','Conformance'],
+  'ANM-0118':['Level shift','Coverage'],
+  'EHR-0207':['Level shift','Plausibility'], 'EHR-0205':['Level shift','Coverage'],
+  'EHR-0203':['Level shift','Completeness'], 'EHR-0209':['Outlier','Plausibility'],
+  'EHR-0211':['Ratio / consistency break','Uniqueness'], 'EHR-0208':['Level shift','Timeliness'],
+  'EHR-0201':['Level shift','Completeness'], 'EHR-0198':['Level shift','Coverage']
+};
+[CLAIMS_FINDINGS,EHR_FINDINGS].forEach(arr=>arr.forEach(f=>{ const a=FINDING_AXES[f.id]; if(a){ f.signature=a[0]; f.property=a[1]; } }));
+
 function auditRef(){ return 'AUD-'+(AUDIT_SEQ++); }
 function logAudit(act, cat='teal', actor){
   actor = actor || (state.role==='reviewer'?'Dr. L. Ferreira · Reviewer':state.role==='executive'?'Executive · read-only':'M. Okafor · Analyst');
@@ -946,7 +973,7 @@ SCREENS.overview = ()=>{
   const hi=FINDINGS.filter(f=>f.priority>=80).length;
   const likely=FINDINGS.filter(f=>/Likely|Confirmed/.test(f.dqrisk)).length;
   const openInv=FINDINGS.filter(f=>['Under investigation','Submitted for review'].includes(f.status)).length;
-  const famCounts={}; FINDINGS.forEach(f=>famCounts[f.family]=(famCounts[f.family]||0)+1);
+  const propCounts={}; FINDINGS.forEach(f=>{ const p=f.property||'Unclassified'; propCounts[p]=(propCounts[p]||0)+1; });
   const statusCounts={}; FINDINGS.forEach(f=>statusCounts[f.status]=(statusCounts[f.status]||0)+1);
   const comp=(DATA.summary&&DATA.summary.completeness)?DATA.summary.completeness:[];
   return `
@@ -989,8 +1016,9 @@ SCREENS.overview = ()=>{
     </div>
   </div>
   <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
-    <div class="card"><div class="card-h">Anomalies by family</div><div class="card-b">
-      ${hbars(Object.entries(famCounts).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v,null,'var(--teal)']))}</div></div>
+    <div class="card"><div class="card-h">Anomalies by affected property <span class="r">quality dimension</span></div><div class="card-b">
+      ${hbars(Object.entries(propCounts).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v,null,'var(--teal)']))}
+      <div class="muted xsmall" style="margin-top:8px">Which quality dimension is at risk — comparable across datasets. Statistical signature and suspected mechanism are tracked separately (mechanism as an investigation hypothesis).</div></div></div>
     <div class="card"><div class="card-h">Findings by review status</div><div class="card-b">
       ${hbars(Object.entries(statusCounts).map(([k,v])=>[k,v,null, k==='Submitted for review'?'var(--purple)':k==='Monitoring'?'var(--green)':'var(--teal)']))}</div></div>
     <div class="card"><div class="card-h">Field completeness <span class="r">current release</span></div><div class="card-b">
@@ -1058,6 +1086,13 @@ SCREENS['scan-scope'] = ()=>{
     <div><span class="muted small">Tracks</span><br>Track 1 broad scan · Track 2 known-anomaly reassessment</div>
     <div><span class="muted small">Baseline</span><br>${DATA.summary.scanConfig.baseline}; immature periods excluded</div>
     <div><span class="muted small">FDR control</span><br>${DATA.summary.scanConfig.fdr}</div>
+  </div></div>
+  <div class="card" style="margin-top:14px"><div class="card-h">Quality properties — canonical taxonomy <span class="r">signature × affected property (Kahn / OHDSI)</span></div><div class="card-b">
+    <p class="muted small" style="margin:0 0 10px">Findings are classified by the quality dimension at risk (below) and their statistical signature — one vocabulary shared across every dataset, so completeness in claims and completeness in EHR aggregate together. Suspected mechanism is recorded separately, as an investigation hypothesis.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      ${PROPERTY_ORDER.map(p=>`<div style="border:1px solid var(--line);border-radius:7px;padding:9px 11px"><div style="font-weight:600;font-size:12.5px">${p}</div><div class="muted xsmall" style="margin-top:2px">${PROPERTY_DESC[p]}</div></div>`).join('')}
+    </div>
+    <div class="callout amber" style="margin-top:10px"><span class="ci">Coverage gaps</span><div>Recognised but not yet fully detected here: <b>duplication / uniqueness</b> (beyond enrollment overlap), <b>referential / linkage integrity</b> (orphan claims / encounters), <b>denominator / enrollment integrity</b>, and <b>temporal logic</b> (discharge-before-admission, fill-before-Rx, future dates). Each is a property + rule check, not a new family.</div></div>
   </div></div>`;
 };
 function codeListModal(){
@@ -1105,13 +1140,17 @@ SCREENS.anomalies = ()=>{
         </div>
         <div style="font-weight:600;font-size:14px;margin-bottom:3px">${f.title}</div>
         <div class="muted small" style="margin-bottom:10px;max-width:92ch">${f.summary}</div>
+        <div class="row" style="gap:6px;margin-bottom:9px">
+          ${f.property?`<span class="chip teal" title="Affected quality dimension"><span class="cd"></span>${f.property}</span>`:''}
+          ${f.signature?`<span class="chip grey" title="Statistical signature"><span class="cd"></span>${f.signature}</span>`:''}
+          <span class="chip grey" style="opacity:.85" title="Detector"><span class="cd"></span>detector: ${f.family}</span>
+        </div>
         <div class="row small muted" style="gap:16px;margin-bottom:11px">
-          <span><b class="mono" style="color:var(--ink-2)">${f.family}</b></span>
           <span>Measure: ${f.measure}</span><span>Segment: ${f.segment}</span><span>Period: ${f.period}</span>
           <span>Reach: ${f.reach}</span>
         </div>
         ${scoreBars(f.score)}
-        <div class="small muted" style="margin-top:9px;font-style:italic">Why ranked here: ${f.why||'Composite of magnitude, reach and recency relative to open queue.'}</div>
+        <div class="small muted" style="margin-top:9px;font-style:italic">Why ranked here: ${f.why||((f.signature||'Signal')+' affecting '+((f.property||'data').toLowerCase())+' — ranked by magnitude, reach and recency.')}</div>
       </div>
     </div>`).join('')}
   </div>`;
@@ -1776,7 +1815,7 @@ render();
      Data file (pipeline_findings.js) is regenerated by
      src/findings_mapper.py — this glue code is stable.
      ============================================================ -->
-<script src="pipeline_findings.js?v=6"></script>
+<script src="pipeline_findings.js?v=7"></script>
 <script>
 (function(){
   if(!window.SYN_FINDINGS){ console.warn('pipeline_findings.js not loaded'); return; }
@@ -1822,15 +1861,21 @@ render();
         + 'title="Click to see the '+f.signals+' claims">'
         + '<div class="card-b">'
         +   '<div class="between" style="margin-bottom:7px">'
-        +     '<div class="row" style="gap:8px"><b style="font-size:15.5px">'+f.kind+'</b>'
+        +     '<div class="row" style="gap:8px;flex-wrap:wrap"><b style="font-size:15.5px">'+f.kind+'</b>'
         +       (f.nature?'<span class="chip '+(f.nature==='Rule violation'?'teal':'grey')+'"><span class="cd"></span>'+f.nature+'</span>':'')
+        +       (f.property?'<span class="chip teal" title="Affected quality dimension"><span class="cd"></span>'+f.property+'</span>':'')
         +       '<span class="chip '+sev+'"><span class="cd"></span>'+f.dqrisk+'</span></div>'
         +     '<div class="row" style="gap:7px;align-items:baseline"><span class="num" style="font-size:22px;font-weight:600">'+f.signals+'</span>'
-        +       '<span class="muted small">claims</span></div>'
+        +       '<span class="muted small">records</span></div>'
         +   '</div>'
-        +   '<div class="muted small" style="max-width:92ch;margin-bottom:9px">'+f.what+'</div>'
+        +   '<div class="muted small" style="max-width:92ch;margin-bottom:8px">'+f.what+'</div>'
+        +   (typeof f.flagRate!=='undefined'
+              ? '<div class="small" style="margin-bottom:9px">Flag rate <b>'+f.flagRate+'%</b> vs expected ≤'+f.expectedMax+'% — '
+                + (f.breached?'<span class="pass">breached its band → promoted to a finding</span>'
+                            :'<span class="partial">within background → individual records, not a finding</span>')+'</div>'
+              : '')
         +   '<div class="between"><span class="xsmall muted">'+f.reach+'</span>'
-        +     '<a class="small" style="font-weight:600">View the '+f.signals+' claims →</a></div>'
+        +     '<a class="small" style="font-weight:600">View the '+f.signals+' records →</a></div>'
         + '</div></div>';
     };
     // group the kinds by how the anomaly is found: one column, two fields together, or many columns
@@ -1854,14 +1899,14 @@ render();
     }).join('');
     return ''
       + '<div class="crumb"><a onclick="go(\'overview\')">Findings</a><span class="sep">/</span>Anomaly scan</div>'
-      + '<h1 class="page">Anomaly scan — '+S.flagged+' claims flagged</h1>'
+      + '<h1 class="page">Anomaly scan — '+S.flagged+' records flagged</h1>'
       + '<p class="page-sub">The scan reviewed '+Number(S.scanned).toLocaleString()+' claims and flagged '+S.flagged
-      +   ' that don’t look right. They fall into three categories — from a single out-of-range value, to two fields that disagree, '
-      +   'to a record that only looks wrong across many columns at once. Click a kind to see the individual claims.</p>'
+      +   ' record-level anomalies across '+S.findings+' checks. A check is promoted to a <b>finding</b> only when its flag rate '
+      +   'breaks its expected background band — so raw counts don’t auto-promote, and the individual records stay as evidence one click away.</p>'
       + '<div class="kpis" style="margin-bottom:8px">'
-      +   '<div class="kpi"><div class="v">'+Number(S.scanned).toLocaleString()+'</div><div class="k">Claims reviewed</div></div>'
-      +   '<div class="kpi warn"><div class="v">'+S.flagged+'</div><div class="k">Flagged for review</div></div>'
-      +   '<div class="kpi"><div class="v">'+S.findings+'</div><div class="k">Kinds · 3 categories</div></div>'
+      +   '<div class="kpi"><div class="v">'+Number(S.scanned).toLocaleString()+'</div><div class="k">Records reviewed</div></div>'
+      +   '<div class="kpi warn"><div class="v">'+S.flagged+'</div><div class="k">Record-level flags</div></div>'
+      +   '<div class="kpi"><div class="v">'+fs.filter(function(f){return f.breached;}).length+' / '+S.findings+'</div><div class="k">Checks breached → findings</div></div>'
       +   '<div class="kpi"><div class="v">~'+pct+'%</div><div class="k">Of all claims</div></div>'
       + '</div>'
       + sections;
@@ -1892,6 +1937,7 @@ render();
       + '<div class="modal-b">'
       + '<div class="row" style="gap:6px;margin-bottom:12px">'
       +   (f.nature?'<span class="chip '+(f.nature==='Rule violation'?'teal':'grey')+'"><span class="cd"></span>'+f.nature+'</span>':'')
+      +   (f.property?'<span class="chip teal"><span class="cd"></span>'+f.property+'</span>':'')
       +   '<span class="chip '+sev+'"><span class="cd"></span>'+f.dqrisk+'</span>'
       +   (f.category?'<span class="chip grey"><span class="cd"></span>'+f.category+' — '+({Univariate:'one column',"Cross-column":'two fields disagree',Multivariate:'many columns'}[f.category]||'')+'</span>':'')
       +   '<span class="chip grey"><span class="cd"></span>'+f.signals+' claims flagged</span></div>'
