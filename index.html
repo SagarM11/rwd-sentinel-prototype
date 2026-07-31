@@ -819,7 +819,9 @@ function runScan(){
   if(DSB.scanned){ toast('Scan already complete for this dataset',null,false); return; }
   DSB.scanned=true;
   const sig=FINDINGS.reduce((a,f)=>a+(f.signals||1),0);
-  logAudit(`Anomaly scan ${DATA.scan.id} executed — consolidated ${sig} signals into ${FINDINGS.length} findings across ${DATA.families.length} families; unreliable detectors withheld.`,'teal','System · detector '+DATA.scan.suite);
+  const ex=DSB.excluded||[];
+  const scope = ex.length ? ('selected columns — excluded '+ex.map(t=>t.split('::')[1]).join(', ')+' (dependent detectors withheld)') : 'all columns';
+  logAudit(`Anomaly scan ${DATA.scan.id} executed — scope: ${scope}. Consolidated ${sig} signals into ${FINDINGS.length} findings across ${DATA.families.length} families.`,'teal','System · detector '+DATA.scan.suite);
   toast('Scan complete — '+FINDINGS.length+' findings surfaced');
   go('anomalies');
 }
@@ -891,6 +893,8 @@ SCREENS.select = ()=>{
 SCREENS.source = ()=>{
   const s=DATA.summary, d=DATA.dataset;
   const hasFail = s.readiness.some(r=>r[1]==='Fail');
+  const ex = DSB.excluded || (DSB.excluded=[]);
+  const allCols = s.fields.reduce((a,r)=>a.concat(r[1].split(' · ').map(f=>r[0]+'::'+f)),[]);
   return `
   <div class="crumb"><a onclick="go('source')">Data Source</a><span class="sep">/</span>Configuration &amp; summary</div>
   <div class="between">
@@ -957,6 +961,20 @@ SCREENS.source = ()=>{
     </div></div>
   </div>
 
+  <div class="card" style="margin-bottom:14px"><div class="card-h">Column scope <span class="r">${allCols.length-ex.length} of ${allCols.length} columns included</span></div><div class="card-b">
+    <div class="between" style="margin-bottom:11px">
+      <div class="muted small" style="max-width:74ch">Choose which columns the scan should focus on — exclude fields that are known-bad or out of scope for this study. Excluding a column never hides it silently: the detectors that depend on it are <b>withheld and disclosed</b>.</div>
+      ${DSB.scanned?'':`<button class="btn sm" onclick="includeAllColumns()" ${ex.length?'':'disabled'}>Include all</button>`}
+    </div>
+    ${s.fields.map(row=>{ const dom=row[0]; const fs=row[1].split(' · ');
+      return `<div style="margin-bottom:10px"><div class="xsmall muted" style="text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${dom}</div>
+        <div class="row" style="gap:6px">${fs.map(f=>{ const tok=(dom+'::'+f).replace(/'/g,'’'); const off=ex.indexOf(dom+'::'+f)>=0;
+          return `<span class="chip ${off?'grey':'teal'}" style="${DSB.scanned?'':'cursor:pointer;'}${off?'opacity:.6;text-decoration:line-through':''}" ${DSB.scanned?'':`onclick="toggleColumn('${tok}')"`}><span class="cd"></span>${f}</span>`;
+        }).join('')}</div></div>`;
+    }).join('')}
+    ${ex.length?`<div class="callout amber" style="margin-top:8px"><span class="ci">Visible quarantine</span><div><b>${ex.length} column${ex.length>1?'s':''} excluded</b> — ${ex.map(t=>t.split('::')[1]).join(', ')}. Detectors that depend on these are withheld and shown as withheld, never silently skipped. The exact scope (with named exclusions) is written to the audit trail when the scan runs.</div></div>`:`<div class="callout teal" style="margin-top:8px"><span class="ci">✓</span><div>All columns in scope. Toggle any field above to narrow the scan.</div></div>`}
+  </div></div>
+
   <div class="card"><div class="card-b between">
     <div class="small muted">${DSB.scanned?`Scan ${DATA.scan.id} complete — ${FINDINGS.length} findings available.`:'Configure above, then run the anomaly scan to generate findings.'}</div>
     <div class="row">
@@ -966,6 +984,8 @@ SCREENS.source = ()=>{
   </div></div>`;
 };
 function rerunScan(){ logAudit(`Re-ran anomaly scan ${DATA.scan.id}.`,'teal','System · detector '+DATA.scan.suite); toast('Scan re-run complete'); go('anomalies'); }
+function toggleColumn(tok){ DSB.excluded=DSB.excluded||[]; const i=DSB.excluded.indexOf(tok); if(i<0)DSB.excluded.push(tok); else DSB.excluded.splice(i,1); render(); }
+function includeAllColumns(){ DSB.excluded=[]; render(); }
 
 /* ---- Overview ---- */
 SCREENS.overview = ()=>{
