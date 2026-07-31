@@ -41,7 +41,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.995,
     "driver": "KNN",
-    "note": "death certification; overdose (disorder)"
+    "note": "death certification; overdose (disorder)",
+    "reason": "Coded as a wellness visit, but the note reads “death certification; overdose” — the note and the billing code describe different things."
    },
    {
     "claim_id": "0133267a",
@@ -51,7 +52,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.992,
     "driver": "IForest",
-    "note": "consultation for treatment (procedure); sterilization requested (situation); sterilization requested (situation)"
+    "note": "consultation for treatment (procedure); sterilization requested (situation); sterilization requested (situation)",
+    "reason": "Coded as an outpatient visit, but the note reads “consultation for treatment; sterilization requested; sterilization requested” — the note and the billing code describe different things."
    },
    {
     "claim_id": "5a1b2463",
@@ -61,7 +63,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.992,
     "driver": "IForest",
-    "note": "death certification; sudden cardiac death (disorder)"
+    "note": "death certification; sudden cardiac death (disorder)",
+    "reason": "Coded as a wellness visit, but the note reads “death certification; sudden cardiac death” — the note and the billing code describe different things."
    },
    {
     "claim_id": "20447ad5",
@@ -71,7 +74,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.991,
     "driver": "KNN",
-    "note": "death certification; acute st segment elevation myocardial infarction (disorder)"
+    "note": "death certification; acute st segment elevation myocardial infarction (disorder)",
+    "reason": "Coded as a wellness visit, but the note reads “death certification; acute st segment elevation myocardial infarction” — the note and the billing code describe different things."
    },
    {
     "claim_id": "f9ba83f7",
@@ -81,7 +85,8 @@ window.SYN_FINDINGS = [
     "nproc": 6,
     "score": 0.989,
     "driver": "LOF",
-    "note": "encounter for check up (procedure); routine visit, no acute issues"
+    "note": "encounter for check up (procedure); routine visit, no acute issues",
+    "reason": "Coded as an emergency visit, but the note reads “encounter for check up; routine visit, no acute issues” — the note and the billing code describe different things."
    },
    {
     "claim_id": "a03e9688",
@@ -91,7 +96,8 @@ window.SYN_FINDINGS = [
     "nproc": 1,
     "score": 0.989,
     "driver": "KNN",
-    "note": "patient encounter procedure (procedure); plain x-ray of spine and pelvis (procedure)"
+    "note": "patient encounter procedure (procedure); plain x-ray of spine and pelvis (procedure)",
+    "reason": "Coded as an outpatient visit, but the note reads “patient encounter procedure; plain x-ray of spine and pelvis” — the note and the billing code describe different things."
    },
    {
     "claim_id": "5d84e6a3",
@@ -101,7 +107,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.987,
     "driver": "LOF",
-    "note": "encounter for check up (procedure); routine visit, no acute issues"
+    "note": "encounter for check up (procedure); routine visit, no acute issues",
+    "reason": "Coded as an emergency visit, but the note reads “encounter for check up; routine visit, no acute issues” — the note and the billing code describe different things."
    },
    {
     "claim_id": "03a7cc66",
@@ -111,7 +118,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.986,
     "driver": "LOF",
-    "note": "death certification; familial alzheimer's disease of early onset (disorder)"
+    "note": "death certification; familial alzheimer's disease of early onset (disorder)",
+    "reason": "Coded as a wellness visit, but the note reads “death certification; familial alzheimer's disease of early onset” — the note and the billing code describe different things."
    },
    {
     "claim_id": "a85e45e4",
@@ -121,7 +129,8 @@ window.SYN_FINDINGS = [
     "nproc": 4,
     "score": 0.985,
     "driver": "KNN",
-    "note": "encounter for check up (procedure); routine visit, no acute issues"
+    "note": "encounter for check up (procedure); routine visit, no acute issues",
+    "reason": "Coded as an outpatient visit, but the note reads “encounter for check up; routine visit, no acute issues” — the note and the billing code describe different things."
    },
    {
     "claim_id": "53e4891a",
@@ -131,7 +140,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.98,
     "driver": "LOF",
-    "note": "prenatal visit (regime/therapy); blighted ovum (disorder); past pregnancy history of miscarriage (situation)"
+    "note": "prenatal visit (regime/therapy); blighted ovum (disorder); past pregnancy history of miscarriage (situation)",
+    "reason": "Coded as a wellness visit, but the note reads “prenatal visit; blighted ovum; past pregnancy history of miscarriage” — the note and the billing code describe different things."
    },
    {
     "claim_id": "6361e20a",
@@ -141,7 +151,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.98,
     "driver": "KNN",
-    "note": "encounter for problem (procedure); sepsis (disorder); sepsis (disorder)"
+    "note": "encounter for problem (procedure); sepsis (disorder); sepsis (disorder)",
+    "reason": "Coded as an emergency visit, but the note reads “encounter for problem; sepsis; sepsis” — the note and the billing code describe different things."
    },
    {
     "claim_id": "c1e9a9fb",
@@ -151,7 +162,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.979,
     "driver": "KNN",
-    "note": "death certification; disease caused by severe acute respiratory syndrome coronavirus 2 (disorder)"
+    "note": "death certification; disease caused by severe acute respiratory syndrome coronavirus 2 (disorder)",
+    "reason": "Coded as a wellness visit, but the note reads “death certification; disease caused by severe acute respiratory syndrome coronavirus 2” — the note and the billing code describe different things."
    }
   ]
  },
@@ -196,7 +208,8 @@ window.SYN_FINDINGS = [
     "nproc": 3,
     "score": 0.996,
     "driver": "LOF",
-    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting"
+    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting",
+    "reason": "Patient is age 1, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
     "claim_id": "5e8e2a97",
@@ -206,7 +219,8 @@ window.SYN_FINDINGS = [
     "nproc": 3,
     "score": 0.983,
     "driver": "AutoEncoder",
-    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting"
+    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting",
+    "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
     "claim_id": "1e7909f8",
@@ -216,7 +230,8 @@ window.SYN_FINDINGS = [
     "nproc": 7,
     "score": 0.983,
     "driver": "LOF",
-    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting"
+    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting",
+    "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
     "claim_id": "885c1eeb",
@@ -226,7 +241,8 @@ window.SYN_FINDINGS = [
     "nproc": 3,
     "score": 0.981,
     "driver": "IForest",
-    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting"
+    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting",
+    "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
     "claim_id": "373e1deb",
@@ -236,7 +252,8 @@ window.SYN_FINDINGS = [
     "nproc": 7,
     "score": 0.98,
     "driver": "LOF",
-    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting"
+    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting",
+    "reason": "Patient is age 2, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
     "claim_id": "9277390b",
@@ -246,7 +263,8 @@ window.SYN_FINDINGS = [
     "nproc": 3,
     "score": 0.98,
     "driver": "LOF",
-    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting"
+    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting",
+    "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
     "claim_id": "5d84e6a3",
@@ -256,7 +274,8 @@ window.SYN_FINDINGS = [
     "nproc": 4,
     "score": 0.979,
     "driver": "LOF",
-    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting"
+    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting",
+    "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
     "claim_id": "688c8453",
@@ -266,7 +285,8 @@ window.SYN_FINDINGS = [
     "nproc": 3,
     "score": 0.979,
     "driver": "IForest",
-    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting"
+    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting",
+    "reason": "Patient is age 2, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
     "claim_id": "311e00b9",
@@ -276,7 +296,8 @@ window.SYN_FINDINGS = [
     "nproc": 3,
     "score": 0.979,
     "driver": "IForest",
-    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting"
+    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting",
+    "reason": "Patient is age 1, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
     "claim_id": "062ce52a",
@@ -286,7 +307,8 @@ window.SYN_FINDINGS = [
     "nproc": 3,
     "score": 0.979,
     "driver": "IForest",
-    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting"
+    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting",
+    "reason": "Patient is age 1, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
     "claim_id": "a03e9688",
@@ -296,7 +318,8 @@ window.SYN_FINDINGS = [
     "nproc": 5,
     "score": 0.976,
     "driver": "IForest",
-    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting"
+    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting",
+    "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
     "claim_id": "53e4891a",
@@ -306,7 +329,8 @@ window.SYN_FINDINGS = [
     "nproc": 3,
     "score": 0.972,
     "driver": "AutoEncoder",
-    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting"
+    "note": "total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; coronary artery bypass grafting",
+    "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    }
   ]
  },
@@ -351,7 +375,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.99,
     "driver": "IForest",
-    "note": "well child visit (procedure); aortic valve regurgitation (disorder)"
+    "note": "well child visit (procedure); aortic valve regurgitation (disorder)",
+    "reason": "For a wellness visit at age 0, the note “well child visit; aortic valve regurgitation” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
     "claim_id": "9277390b",
@@ -361,7 +386,8 @@ window.SYN_FINDINGS = [
     "nproc": 4,
     "score": 0.986,
     "driver": "IForest",
-    "note": "encounter for check up (procedure); routine visit, no acute issues"
+    "note": "encounter for check up (procedure); routine visit, no acute issues",
+    "reason": "For an inpatient visit at age 60, an unusual combination stands out — billed $29,467 (≈5× the ~$5,424 typical for an inpatient visit); 4 procedure lines — alongside the note “encounter for check up; routine visit, no acute issues”."
    },
    {
     "claim_id": "9a57c612",
@@ -371,7 +397,8 @@ window.SYN_FINDINGS = [
     "nproc": 1,
     "score": 0.986,
     "driver": "LOF",
-    "note": "consultation for treatment (procedure); sterilization requested (situation); sterilization requested (situation); sterilization education (p"
+    "note": "consultation for treatment (procedure); sterilization requested (situation); sterilization requested (situation); sterilization education (p",
+    "reason": "For an outpatient visit at age 35, the note “consultation for treatment; sterilization requested; sterilization requested; sterilization edu…” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
     "claim_id": "ab07c698",
@@ -381,7 +408,8 @@ window.SYN_FINDINGS = [
     "nproc": 5,
     "score": 0.984,
     "driver": "IForest",
-    "note": "encounter for check up (procedure); routine visit, no acute issues"
+    "note": "encounter for check up (procedure); routine visit, no acute issues",
+    "reason": "For a wellness visit at age 60, an unusual combination stands out — billed $25,004 (≈27× the ~$920 typical for a wellness visit); 5 procedure lines — alongside the note “encounter for check up; routine visit, no acute issues”."
    },
    {
     "claim_id": "ab07c698",
@@ -391,7 +419,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.982,
     "driver": "IForest",
-    "note": "death certification; chronic congestive heart failure (disorder)"
+    "note": "death certification; chronic congestive heart failure (disorder)",
+    "reason": "For a wellness visit at age 68, the note “death certification; chronic congestive heart failure” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
     "claim_id": "01a006ce",
@@ -401,7 +430,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.98,
     "driver": "IForest",
-    "note": "death certification; chronic congestive heart failure (disorder)"
+    "note": "death certification; chronic congestive heart failure (disorder)",
+    "reason": "For a wellness visit at age 56, the note “death certification; chronic congestive heart failure” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
     "claim_id": "688c8453",
@@ -411,7 +441,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.98,
     "driver": "IForest",
-    "note": "death certification; end-stage renal disease (disorder)"
+    "note": "death certification; end-stage renal disease (disorder)",
+    "reason": "For a wellness visit at age 60, the note “death certification; end-stage renal disease” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
     "claim_id": "5d84e6a3",
@@ -421,7 +452,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.979,
     "driver": "IForest",
-    "note": "encounter for check up (procedure); body mass index 30+ - obesity (finding)"
+    "note": "encounter for check up (procedure); body mass index 30+ - obesity (finding)",
+    "reason": "For an outpatient visit at age 30, the note “encounter for check up; body mass index 30+ - obesity” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
     "claim_id": "7ad140ab",
@@ -431,7 +463,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.979,
     "driver": "IForest",
-    "note": "death certification; end-stage renal disease (disorder)"
+    "note": "death certification; end-stage renal disease (disorder)",
+    "reason": "For a wellness visit at age 70, the note “death certification; end-stage renal disease” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
     "claim_id": "a1733070",
@@ -441,7 +474,8 @@ window.SYN_FINDINGS = [
     "nproc": 7,
     "score": 0.976,
     "driver": "IForest",
-    "note": "encounter for check up (procedure); routine visit, no acute issues"
+    "note": "encounter for check up (procedure); routine visit, no acute issues",
+    "reason": "For a wellness visit at age 38, an unusual combination stands out — billed $36,167 (≈39× the ~$920 typical for a wellness visit); 7 procedure lines — alongside the note “encounter for check up; routine visit, no acute issues”."
    },
    {
     "claim_id": "0fb515d6",
@@ -451,7 +485,8 @@ window.SYN_FINDINGS = [
     "nproc": 5,
     "score": 0.975,
     "driver": "IForest",
-    "note": "encounter for check up (procedure); routine visit, no acute issues"
+    "note": "encounter for check up (procedure); routine visit, no acute issues",
+    "reason": "For a wellness visit at age 42, an unusual combination stands out — billed $38,518 (≈42× the ~$920 typical for a wellness visit); 5 procedure lines — alongside the note “encounter for check up; routine visit, no acute issues”."
    },
    {
     "claim_id": "688c8453",
@@ -461,7 +496,8 @@ window.SYN_FINDINGS = [
     "nproc": 7,
     "score": 0.973,
     "driver": "IForest",
-    "note": "encounter for check up (procedure); routine visit, no acute issues"
+    "note": "encounter for check up (procedure); routine visit, no acute issues",
+    "reason": "For a wellness visit at age 53, an unusual combination stands out — billed $28,683 (≈31× the ~$920 typical for a wellness visit); 7 procedure lines — alongside the note “encounter for check up; routine visit, no acute issues”."
    }
   ]
  },
@@ -506,7 +542,8 @@ window.SYN_FINDINGS = [
     "nproc": 0,
     "score": 0.978,
     "driver": "KNN",
-    "note": "encounter for problem (procedure); sepsis (disorder); sepsis (disorder)"
+    "note": "encounter for problem (procedure); sepsis (disorder); sepsis (disorder)",
+    "reason": "Billed $78,624 — about 78× the typical emergency bill (around $1,009)."
    },
    {
     "claim_id": "7c50e28d",
@@ -516,7 +553,8 @@ window.SYN_FINDINGS = [
     "nproc": 3,
     "score": 0.967,
     "driver": "KNN",
-    "note": "urgent care clinic (environment); medication review due (situation); assessment of health and social care needs (procedure); depression scre"
+    "note": "urgent care clinic (environment); medication review due (situation); assessment of health and social care needs (procedure); depression scre",
+    "reason": "Billed $86,915 — about 100× the typical urgentcare bill (around $872)."
    }
   ]
  },
@@ -561,7 +599,8 @@ window.SYN_FINDINGS = [
     "nproc": 247,
     "score": 0.973,
     "driver": "AutoEncoder",
-    "note": "general examination of patient (procedure); body mass index 30+ - obesity (finding)"
+    "note": "general examination of patient (procedure); body mass index 30+ - obesity (finding)",
+    "reason": "247 procedure lines on a single wellness visit — that kind of visit normally has only a handful."
    },
    {
     "claim_id": "6c3ee07c",
@@ -571,7 +610,8 @@ window.SYN_FINDINGS = [
     "nproc": 185,
     "score": 0.971,
     "driver": "KNN",
-    "note": "encounter for symptom (procedure); perennial allergic rhinitis with seasonal variation (disorder); perennial allergic rhinitis with seasonal"
+    "note": "encounter for symptom (procedure); perennial allergic rhinitis with seasonal variation (disorder); perennial allergic rhinitis with seasonal",
+    "reason": "185 procedure lines on a single ambulatory visit — that kind of visit normally has only a handful."
    },
    {
     "claim_id": "bf5bb016",
@@ -581,7 +621,8 @@ window.SYN_FINDINGS = [
     "nproc": 180,
     "score": 0.959,
     "driver": "AutoEncoder",
-    "note": "well child visit (procedure); risk activity involvement (finding)"
+    "note": "well child visit (procedure); risk activity involvement (finding)",
+    "reason": "180 procedure lines on a single wellness visit — that kind of visit normally has only a handful."
    },
    {
     "claim_id": "dbf17e44",
@@ -591,7 +632,8 @@ window.SYN_FINDINGS = [
     "nproc": 194,
     "score": 0.959,
     "driver": "KNN",
-    "note": "allergic disorder initial assessment (regime/therapy); allergic disposition (finding)"
+    "note": "allergic disorder initial assessment (regime/therapy); allergic disposition (finding)",
+    "reason": "194 procedure lines on a single ambulatory visit — that kind of visit normally has only a handful."
    }
   ]
  }
