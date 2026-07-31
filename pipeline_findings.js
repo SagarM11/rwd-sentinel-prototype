@@ -5,6 +5,8 @@ window.SYN_FINDINGS = [
   "family": "The note doesn't match the code",
   "kind": "The note doesn't match the code",
   "category": "Cross-column",
+  "nature": "Rule violation",
+  "natureNote": "Near-certain data defect — the record breaks a hard rule, so no baseline is needed.",
   "title": "The note doesn't match the code — 20 claims flagged",
   "summary": "20 claims where the written clinical note describes something different from what the claim is coded and billed as. Most are wellness / ambulatory / outpatient visits.",
   "what": "The written clinical note describes something different from what the claim is coded and billed as.",
@@ -35,7 +37,7 @@ window.SYN_FINDINGS = [
   "why": "When the story in the note and the billing code disagree, one of them is probably wrong — a mis-picked code, a note attached to the wrong visit, or a template that was never updated.",
   "evidence": [
    {
-    "claim_id": "7c50e28d",
+    "claim_id": "7c50e28d-07cc-a4cf-33a5-d3f03ffc9b31",
     "cls": "wellness",
     "age": 54,
     "billed": 211.38,
@@ -46,7 +48,7 @@ window.SYN_FINDINGS = [
     "reason": "Coded as a wellness visit, but the note reads “death certification; overdose” — the note and the billing code describe different things."
    },
    {
-    "claim_id": "0133267a",
+    "claim_id": "0133267a-6406-a01b-f378-a6d7ed8ca002",
     "cls": "outpatient",
     "age": 47,
     "billed": 142.58,
@@ -57,7 +59,7 @@ window.SYN_FINDINGS = [
     "reason": "Coded as an outpatient visit, but the note reads “consultation for treatment; sterilization requested; sterilization requested” — the note and the billing code describe different things."
    },
    {
-    "claim_id": "5a1b2463",
+    "claim_id": "5a1b2463-6dbf-ff69-2fa5-7faf6b508a37",
     "cls": "wellness",
     "age": 2,
     "billed": 211.38,
@@ -68,7 +70,7 @@ window.SYN_FINDINGS = [
     "reason": "Coded as a wellness visit, but the note reads “death certification; sudden cardiac death” — the note and the billing code describe different things."
    },
    {
-    "claim_id": "20447ad5",
+    "claim_id": "20447ad5-5095-fb78-71f1-7158d3dab345",
     "cls": "wellness",
     "age": 62,
     "billed": 211.38,
@@ -79,7 +81,7 @@ window.SYN_FINDINGS = [
     "reason": "Coded as a wellness visit, but the note reads “death certification; acute st segment elevation myocardial infarction” — the note and the billing code describe different things."
    },
    {
-    "claim_id": "f9ba83f7",
+    "claim_id": "f9ba83f7-9940-16ae-212d-4fc422f9e7af",
     "cls": "emergency",
     "age": 48,
     "billed": 30889.76,
@@ -90,7 +92,7 @@ window.SYN_FINDINGS = [
     "reason": "Coded as an emergency visit, but the note reads “encounter for check up; routine visit, no acute issues” — the note and the billing code describe different things."
    },
    {
-    "claim_id": "a03e9688",
+    "claim_id": "a03e9688-2e96-60c9-58fe-7ad37ee67cc2",
     "cls": "outpatient",
     "age": 10,
     "billed": 573.98,
@@ -101,7 +103,7 @@ window.SYN_FINDINGS = [
     "reason": "Coded as an outpatient visit, but the note reads “patient encounter procedure; plain x-ray of spine and pelvis” — the note and the billing code describe different things."
    },
    {
-    "claim_id": "5d84e6a3",
+    "claim_id": "5d84e6a3-b4bd-63d6-09c6-93a22db985d5",
     "cls": "emergency",
     "age": 36,
     "billed": 26352.83,
@@ -112,7 +114,7 @@ window.SYN_FINDINGS = [
     "reason": "Coded as an emergency visit, but the note reads “encounter for check up; routine visit, no acute issues” — the note and the billing code describe different things."
    },
    {
-    "claim_id": "03a7cc66",
+    "claim_id": "03a7cc66-36c5-356c-7080-c3d449d57edd",
     "cls": "wellness",
     "age": 74,
     "billed": 211.38,
@@ -123,7 +125,7 @@ window.SYN_FINDINGS = [
     "reason": "Coded as a wellness visit, but the note reads “death certification; familial alzheimer's disease of early onset” — the note and the billing code describe different things."
    },
    {
-    "claim_id": "a85e45e4",
+    "claim_id": "a85e45e4-9090-0a5e-4494-c5b105225c3c",
     "cls": "outpatient",
     "age": 42,
     "billed": 36725.07,
@@ -134,7 +136,7 @@ window.SYN_FINDINGS = [
     "reason": "Coded as an outpatient visit, but the note reads “encounter for check up; routine visit, no acute issues” — the note and the billing code describe different things."
    },
    {
-    "claim_id": "53e4891a",
+    "claim_id": "53e4891a-9108-67ef-e1c1-a5d519fda4e1",
     "cls": "wellness",
     "age": 63,
     "billed": 860.16,
@@ -145,7 +147,7 @@ window.SYN_FINDINGS = [
     "reason": "Coded as a wellness visit, but the note reads “prenatal visit; blighted ovum; past pregnancy history of miscarriage” — the note and the billing code describe different things."
    },
    {
-    "claim_id": "6361e20a",
+    "claim_id": "6361e20a-35bf-68e3-e601-eb6d21da8e05",
     "cls": "emergency",
     "age": 24,
     "billed": 8990.49,
@@ -156,7 +158,7 @@ window.SYN_FINDINGS = [
     "reason": "Coded as an emergency visit, but the note reads “encounter for problem; sepsis; sepsis” — the note and the billing code describe different things."
    },
    {
-    "claim_id": "c1e9a9fb",
+    "claim_id": "c1e9a9fb-45ec-4ee4-d8a7-9e3e83ba4fc0",
     "cls": "wellness",
     "age": 61,
     "billed": 211.38,
@@ -173,6 +175,8 @@ window.SYN_FINDINGS = [
   "family": "Procedure doesn't fit the patient's age",
   "kind": "Procedure doesn't fit the patient's age",
   "category": "Cross-column",
+  "nature": "Rule violation",
+  "natureNote": "Near-certain data defect — the record breaks a hard rule, so no baseline is needed.",
   "title": "Procedure doesn't fit the patient's age — 15 claims flagged",
   "summary": "15 claims where the procedure on the claim can't reasonably belong to a patient of that age. Most are wellness / outpatient / home visits.",
   "what": "The procedure on the claim can't reasonably belong to a patient of that age.",
@@ -203,7 +207,7 @@ window.SYN_FINDINGS = [
   "why": "An adult or elderly procedure on an infant is clinically impossible — it almost always means the wrong patient, the wrong code, or a data mix-up during import, not care that was actually delivered.",
   "evidence": [
    {
-    "claim_id": "33d283d8",
+    "claim_id": "33d283d8-d724-4c5d-38c5-33c25a659eed",
     "cls": "home",
     "age": 1,
     "billed": 344.23,
@@ -214,7 +218,7 @@ window.SYN_FINDINGS = [
     "reason": "Patient is age 1, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
-    "claim_id": "5e8e2a97",
+    "claim_id": "5e8e2a97-b1ee-6e96-2960-233f6340ebe1",
     "cls": "wellness",
     "age": 0,
     "billed": 563.08,
@@ -225,7 +229,7 @@ window.SYN_FINDINGS = [
     "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
-    "claim_id": "1e7909f8",
+    "claim_id": "1e7909f8-39b2-3c7e-ddcf-bca78b4f7a96",
     "cls": "wellness",
     "age": 0,
     "billed": 1125.22,
@@ -236,7 +240,7 @@ window.SYN_FINDINGS = [
     "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
-    "claim_id": "885c1eeb",
+    "claim_id": "885c1eeb-1b4c-8a3a-7271-7c9694c7261d",
     "cls": "wellness",
     "age": 0,
     "billed": 704.2,
@@ -247,7 +251,7 @@ window.SYN_FINDINGS = [
     "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
-    "claim_id": "373e1deb",
+    "claim_id": "373e1deb-b6b2-b528-451d-01766d352831",
     "cls": "wellness",
     "age": 2,
     "billed": 1086.18,
@@ -258,7 +262,7 @@ window.SYN_FINDINGS = [
     "reason": "Patient is age 2, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
-    "claim_id": "9277390b",
+    "claim_id": "9277390b-8a92-52e1-b8eb-d076c8588f89",
     "cls": "home",
     "age": 0,
     "billed": 559.93,
@@ -269,7 +273,7 @@ window.SYN_FINDINGS = [
     "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
-    "claim_id": "5d84e6a3",
+    "claim_id": "5d84e6a3-b4bd-63d6-f5bf-5664d61ef215",
     "cls": "outpatient",
     "age": 0,
     "billed": 1478.85,
@@ -280,7 +284,7 @@ window.SYN_FINDINGS = [
     "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
-    "claim_id": "688c8453",
+    "claim_id": "688c8453-ba6f-7dec-05fd-08d682c57be0",
     "cls": "urgentcare",
     "age": 2,
     "billed": 392.8,
@@ -291,7 +295,7 @@ window.SYN_FINDINGS = [
     "reason": "Patient is age 2, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
-    "claim_id": "311e00b9",
+    "claim_id": "311e00b9-274f-b3c6-918a-7c5db8871c3c",
     "cls": "wellness",
     "age": 1,
     "billed": 816.8,
@@ -302,7 +306,7 @@ window.SYN_FINDINGS = [
     "reason": "Patient is age 1, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
-    "claim_id": "062ce52a",
+    "claim_id": "062ce52a-5823-aeb4-1238-8a028dda9d97",
     "cls": "wellness",
     "age": 1,
     "billed": 136.8,
@@ -313,7 +317,7 @@ window.SYN_FINDINGS = [
     "reason": "Patient is age 1, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
-    "claim_id": "a03e9688",
+    "claim_id": "a03e9688-2e96-60c9-f3d2-f6729d3d8164",
     "cls": "wellness",
     "age": 0,
     "billed": 1326.05,
@@ -324,7 +328,7 @@ window.SYN_FINDINGS = [
     "reason": "Patient is age 0, but the claim lists “total knee replacement for advanced osteoarthritis in elderly patient; hip arthroplasty; corona…” — procedures that belong to adults, not a child this age."
    },
    {
-    "claim_id": "53e4891a",
+    "claim_id": "53e4891a-9108-67ef-e136-83ecb2041f61",
     "cls": "outpatient",
     "age": 0,
     "billed": 666.11,
@@ -341,6 +345,8 @@ window.SYN_FINDINGS = [
   "family": "Doesn't look like its peers",
   "kind": "Doesn't look like its peers",
   "category": "Multivariate",
+  "nature": "Outlier",
+  "natureNote": "Could be legitimate — it's unusual, not impossible; confirm before treating it as a data issue.",
   "title": "Doesn't look like its peers — 19 claims flagged",
   "summary": "19 claims where no single field is clearly wrong, but the whole claim is unlike any other claim of its type. Most are wellness / outpatient / emergency visits.",
   "what": "No single field is clearly wrong, but the whole claim is unlike any other claim of its type.",
@@ -371,7 +377,7 @@ window.SYN_FINDINGS = [
   "why": "Some problems don't show up in any one field; they only stand out when you look at everything together. This is a 'something's off here' flag rather than a specific broken rule.",
   "evidence": [
    {
-    "claim_id": "ba6ea998",
+    "claim_id": "ba6ea998-e7a3-d122-6ad8-600a8901ca6b",
     "cls": "wellness",
     "age": 0,
     "billed": 136.8,
@@ -382,7 +388,7 @@ window.SYN_FINDINGS = [
     "reason": "For a wellness visit at age 0, the note “well child visit; aortic valve regurgitation” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
-    "claim_id": "9277390b",
+    "claim_id": "9277390b-8a92-52e1-eac3-0f40da73735d",
     "cls": "inpatient",
     "age": 60,
     "billed": 29466.66,
@@ -393,7 +399,7 @@ window.SYN_FINDINGS = [
     "reason": "For an inpatient visit at age 60, an unusual combination stands out — billed $29,467 (≈5× the ~$5,424 typical for an inpatient visit); 4 procedure lines — alongside the note “encounter for check up; routine visit, no acute issues”."
    },
    {
-    "claim_id": "9a57c612",
+    "claim_id": "9a57c612-581f-1c85-4f07-406b2ce2a2d5",
     "cls": "outpatient",
     "age": 35,
     "billed": 573.98,
@@ -404,7 +410,7 @@ window.SYN_FINDINGS = [
     "reason": "For an outpatient visit at age 35, the note “consultation for treatment; sterilization requested; sterilization requested; sterilization edu…” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
-    "claim_id": "ab07c698",
+    "claim_id": "ab07c698-12cf-16d5-fdd7-fdedae4a0f01",
     "cls": "wellness",
     "age": 60,
     "billed": 25004.18,
@@ -415,7 +421,7 @@ window.SYN_FINDINGS = [
     "reason": "For a wellness visit at age 60, an unusual combination stands out — billed $25,004 (≈27× the ~$920 typical for a wellness visit); 5 procedure lines — alongside the note “encounter for check up; routine visit, no acute issues”."
    },
    {
-    "claim_id": "ab07c698",
+    "claim_id": "ab07c698-12cf-16d5-d849-79db7af08fe5",
     "cls": "wellness",
     "age": 68,
     "billed": 211.38,
@@ -426,7 +432,7 @@ window.SYN_FINDINGS = [
     "reason": "For a wellness visit at age 68, the note “death certification; chronic congestive heart failure” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
-    "claim_id": "01a006ce",
+    "claim_id": "01a006ce-6457-50c2-b993-07cdd8028519",
     "cls": "wellness",
     "age": 56,
     "billed": 211.38,
@@ -437,7 +443,7 @@ window.SYN_FINDINGS = [
     "reason": "For a wellness visit at age 56, the note “death certification; chronic congestive heart failure” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
-    "claim_id": "688c8453",
+    "claim_id": "688c8453-ba6f-7dec-55da-21b4d6f6ea82",
     "cls": "wellness",
     "age": 60,
     "billed": 211.38,
@@ -448,7 +454,7 @@ window.SYN_FINDINGS = [
     "reason": "For a wellness visit at age 60, the note “death certification; end-stage renal disease” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
-    "claim_id": "5d84e6a3",
+    "claim_id": "5d84e6a3-b4bd-63d6-3fbf-8c88e27a62cc",
     "cls": "outpatient",
     "age": 30,
     "billed": 1122.8,
@@ -459,7 +465,7 @@ window.SYN_FINDINGS = [
     "reason": "For an outpatient visit at age 30, the note “encounter for check up; body mass index 30+ - obesity” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
-    "claim_id": "7ad140ab",
+    "claim_id": "7ad140ab-bfae-c3ae-c90b-36fd768789a7",
     "cls": "wellness",
     "age": 70,
     "billed": 211.38,
@@ -470,7 +476,7 @@ window.SYN_FINDINGS = [
     "reason": "For a wellness visit at age 70, the note “death certification; end-stage renal disease” is an unusual fit — no single value is wrong, but the record as a whole is unlike its peers."
    },
    {
-    "claim_id": "a1733070",
+    "claim_id": "a1733070-046a-4506-eaff-6e941a8d70ef",
     "cls": "wellness",
     "age": 38,
     "billed": 36167.0,
@@ -481,7 +487,7 @@ window.SYN_FINDINGS = [
     "reason": "For a wellness visit at age 38, an unusual combination stands out — billed $36,167 (≈39× the ~$920 typical for a wellness visit); 7 procedure lines — alongside the note “encounter for check up; routine visit, no acute issues”."
    },
    {
-    "claim_id": "0fb515d6",
+    "claim_id": "0fb515d6-ec2d-33f3-1d20-59c5db908fd7",
     "cls": "wellness",
     "age": 42,
     "billed": 38518.47,
@@ -492,7 +498,7 @@ window.SYN_FINDINGS = [
     "reason": "For a wellness visit at age 42, an unusual combination stands out — billed $38,518 (≈42× the ~$920 typical for a wellness visit); 5 procedure lines — alongside the note “encounter for check up; routine visit, no acute issues”."
    },
    {
-    "claim_id": "688c8453",
+    "claim_id": "688c8453-ba6f-7dec-2f07-cd16843a70f2",
     "cls": "wellness",
     "age": 53,
     "billed": 28683.41,
@@ -509,6 +515,8 @@ window.SYN_FINDINGS = [
   "family": "Unusually large bill",
   "kind": "Unusually large bill",
   "category": "Univariate",
+  "nature": "Outlier",
+  "natureNote": "Could be legitimate — it's unusual, not impossible; confirm before treating it as a data issue.",
   "title": "Unusually large bill — 2 claims flagged",
   "summary": "2 claims where the amount billed is far higher than similar visits normally cost. Most are emergency / urgentcare visits.",
   "what": "The amount billed is far higher than similar visits normally cost.",
@@ -539,7 +547,7 @@ window.SYN_FINDINGS = [
   "why": "A bill many times higher than its peers is often an extra digit keyed by mistake, a duplicated charge, or a genuinely exceptional case — all worth confirming before the number is used.",
   "evidence": [
    {
-    "claim_id": "20447ad5",
+    "claim_id": "20447ad5-5095-fb78-f762-d3772f8cc078",
     "cls": "emergency",
     "age": 25,
     "billed": 78624.3,
@@ -550,7 +558,7 @@ window.SYN_FINDINGS = [
     "reason": "Billed $78,624 — about 78× the typical emergency bill (around $1,009)."
    },
    {
-    "claim_id": "7c50e28d",
+    "claim_id": "7c50e28d-07cc-a4cf-9240-ab5439ef7ce4",
     "cls": "urgentcare",
     "age": 52,
     "billed": 86914.53,
@@ -567,6 +575,8 @@ window.SYN_FINDINGS = [
   "family": "Too many procedures on one claim",
   "kind": "Too many procedures on one claim",
   "category": "Univariate",
+  "nature": "Outlier",
+  "natureNote": "Could be legitimate — it's unusual, not impossible; confirm before treating it as a data issue.",
   "title": "Too many procedures on one claim — 4 claims flagged",
   "summary": "4 claims where a single claim lists far more procedure lines than that kind of visit ever would. Most are wellness / ambulatory visits.",
   "what": "A single claim lists far more procedure lines than that kind of visit ever would.",
@@ -597,7 +607,7 @@ window.SYN_FINDINGS = [
   "why": "A routine visit doesn't involve hundreds of procedures. A pile-up of line items usually means duplicated lines, several visits merged into one claim, or an export error.",
   "evidence": [
    {
-    "claim_id": "ad41b3b5",
+    "claim_id": "ad41b3b5-b5a1-f136-3c96-1b783534f27c",
     "cls": "wellness",
     "age": 37,
     "billed": 1075.86,
@@ -608,7 +618,7 @@ window.SYN_FINDINGS = [
     "reason": "247 procedure lines on a single wellness visit — that kind of visit normally has only a handful."
    },
    {
-    "claim_id": "6c3ee07c",
+    "claim_id": "6c3ee07c-34a7-15d2-e2e5-a0d0d4fc3b92",
     "cls": "ambulatory",
     "age": 5,
     "billed": 85.55,
@@ -619,7 +629,7 @@ window.SYN_FINDINGS = [
     "reason": "185 procedure lines on a single ambulatory visit — that kind of visit normally has only a handful."
    },
    {
-    "claim_id": "bf5bb016",
+    "claim_id": "bf5bb016-bc49-d450-4137-d126c3d2f1b8",
     "cls": "wellness",
     "age": 16,
     "billed": 778.78,
@@ -630,7 +640,7 @@ window.SYN_FINDINGS = [
     "reason": "180 procedure lines on a single wellness visit — that kind of visit normally has only a handful."
    },
    {
-    "claim_id": "dbf17e44",
+    "claim_id": "dbf17e44-1f14-fd36-f216-fdf625e7f406",
     "cls": "ambulatory",
     "age": 13,
     "billed": 573.98,

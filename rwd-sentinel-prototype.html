@@ -4,6 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>RWD Sentinel — Data-Quality Anomaly Detection & Governance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
    RWD Sentinel — single-file prototype
@@ -210,8 +213,9 @@ details .dd{padding:2px 14px 13px;font-size:12.5px;color:var(--ink-2)}
    ============================================================ */
 const ROLES = {analyst:'Analyst · M. Okafor', reviewer:'Reviewer · Dr. L. Ferreira', executive:'Executive · read-only'};
 const state = {
+  signedIn:false,     // sign-in gate before the workspace
   role:'analyst',
-  route:'overview',
+  route:'select',     // after sign-in: pick a dataset first
   sub:null,
   tab:null,
   modal:null,
@@ -574,10 +578,9 @@ CLAIMS_STUDIES.forEach(s=>{ s.biasStatement = CLAIMS_BIAS_STMT[s.id]||''; });
 function auditRef(){ return 'AUD-'+(AUDIT_SEQ++); }
 function logAudit(act, cat='teal', actor){
   actor = actor || (state.role==='reviewer'?'Dr. L. Ferreira · Reviewer':state.role==='executive'?'Executive · read-only':'M. Okafor · Analyst');
-  AUDIT.push({ ts:'2026-07-29 '+nowClock(), actor, act, cat });
+  AUDIT.push({ ts:nowStamp(), actor, act, cat });
 }
-let _clk=[9,7];
-function nowClock(){ _clk[1]+=3; if(_clk[1]>=60){_clk[1]-=60;_clk[0]++;} return String(_clk[0]).padStart(2,'0')+':'+String(_clk[1]).padStart(2,'0'); }
+function nowStamp(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes()); }
 
 /* ============================================================
    CHART HELPERS (hand-rolled SVG — signature expected-band motif)
@@ -674,6 +677,13 @@ const NAV = [
 ];
 
 function renderNav(){
+  // Before a dataset is loaded, the workspace is gated — only the intake is reachable.
+  if(!DSB.loaded){
+    return `<div class="nav-grp"><div class="lbl">GET STARTED</div>
+      <div class="nav-item ${state.route==='select'?'active':''}" onclick="go('select')"><span class="nav-ico">▦</span><span>Select dataset</span></div>
+      <div class="nav-item" style="opacity:.45;cursor:not-allowed"><span class="nav-ico">◉</span><span>Workspace</span><span class="badge" style="background:#EBEFF2;color:var(--ink-3)">locked</span></div>
+    </div>`;
+  }
   return NAV.map(([grp,items])=>`
     <div class="nav-grp"><div class="lbl">${grp}</div>
     ${items.map(it=>{
@@ -698,27 +708,25 @@ function can(cap){
   return true; // analyst/reviewer general edit
 }
 
+const HDR_BTN='background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.32);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit';
 function render(){
+  if(!state.signedIn){ document.getElementById('root').innerHTML = renderGate(); return; }
   document.getElementById('root').innerHTML = `
   <div class="app">
     <header class="top">
       <div class="brand"><span class="mk"></span>RWD&nbsp;Sentinel</div>
       <div class="ctx">
+        ${DSB.loaded?`
         <span class="c">Dataset <b>${DATA.dataset.name}</b> <span class="tag">${DATA.dataset.id}</span></span>
-        <span class="c">Release <b class="mono">${DATA.dataset.working}</b></span>
         <span class="c">Cohort <b>${DATA.cohort.name} ${DATA.cohort.version}</b></span>
         <span class="c">Latest complete <b class="mono">${DATA.dataset.latestComplete}</b></span>
-        <span class="c"><span class="dot" style="background:${DSB.scanned?'#8FE0A8':'#E9C77E'}"></span>Scan <b>${DSB.scanned?DATA.scan.id+' complete':'not run'}</b></span>
+        <span class="c"><span class="dot" style="background:${DSB.scanned?'#8FE0A8':'#E9C77E'}"></span>Scan <b>${DSB.scanned?DATA.scan.id+' complete':'not run'}</b></span>`
+        :`<span class="c" style="opacity:.85">No dataset loaded — select one to begin</span>`}
       </div>
-      <div class="roles">
-        <span style="font-size:11px;opacity:.75">Dataset</span>
-        <select onchange="selectDataset(this.value)" title="Select real-world dataset">
-          ${Object.keys(DATASETS).map(id=>`<option value="${id}" ${state.dataset===id?'selected':''}>${DATASETS[id].meta.dataset.name}</option>`).join('')}
-        </select>
-        <span style="font-size:11px;opacity:.75;margin-left:6px">Role</span>
-        <select onchange="setRole(this.value)">
-          ${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${state.role===k?'selected':''}>${v}</option>`).join('')}
-        </select>
+      <div class="roles" style="gap:8px">
+        ${DSB.loaded?`<button style="${HDR_BTN}" onclick="go('select')" title="Switch dataset">⇄ Switch dataset</button>`:''}
+        <span style="font-size:12px;color:#fff;display:inline-flex;align-items:center;gap:6px"><span class="dot" style="background:#7FD6D6"></span>${ROLES[state.role]}</span>
+        <button style="${HDR_BTN};background:transparent" onclick="signOut()">Sign out</button>
       </div>
     </header>
     <nav class="side">${renderNav()}</nav>
@@ -728,13 +736,60 @@ function render(){
 const SCAN_GATED=['overview','anomalies','investigations','investigation','monitoring','refreshes','study-impact','vendor','reports'];
 function screenContent(){
   const scr=state.route;
+  if(scr==='select') return SCREENS.select();
+  if(!DSB.loaded) return SCREENS.select();                 // must load a dataset first
   if(SCAN_GATED.includes(scr) && !DSB.scanned) return scanRequiredPanel();
   return (SCREENS[scr]||SCREENS.overview)();
 }
-function setRole(r){ state.role=r; toast((r==='executive'?'Executive read-only':ROLES[r].split(' · ')[0])+' role active','gov'); render(); }
-function selectDataset(id){ activateDataset(id); state.tab=null; state.route = DSB.scanned?'overview':'source'; toast('Active dataset: '+DATA.dataset.name); render(); }
+/* ---------- sign-in gate + session + guided intake ---------- */
+const ROLE_CAPS={
+  analyst:['Investigate, run checks, set hypotheses & disposition','Complete impact + quantified bias, submit for review','Record release decisions, study & vendor actions'],
+  reviewer:['Everything an analyst can see','Approve / return / challenge submitted findings','Record release & study decisions'],
+  executive:['Read-only across every screen','No edits, submissions, or decisions']
+};
+function renderGate(){
+  return `<div style="min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr">
+    <div style="background:var(--teal);color:#fff;padding:48px 46px;display:flex;flex-direction:column;justify-content:center">
+      <div style="display:flex;align-items:center;gap:11px;font-weight:600;font-size:16px;letter-spacing:.2px"><span class="mk" style="width:26px;height:26px"></span>RWD Sentinel</div>
+      <h1 style="font-size:30px;font-weight:600;margin:22px 0 10px;line-height:1.2">Data-quality anomaly detection,<br>investigation &amp; governance</h1>
+      <p style="opacity:.85;font-size:15px;max-width:52ch;margin:0 0 26px">Detect, investigate and disposition data-quality anomalies in procured real-world datasets — and close the three loops most tools leave open.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;max-width:46ch">
+        ${[['Release acceptance','A recorded fitness-for-use verdict per refresh, restrictions travelling with the release.'],['Study impact','Findings → affected measures → dependent studies → proceed / pause, with quantified bias.'],['Vendor management','Escalation, SLA tracking and evidence-based remediation verification.']].map(l=>`<div style="display:flex;gap:10px"><span style="color:#7FD6D6;font-weight:700">◆</span><div><b style="font-size:13.5px">${l[0]}</b><div style="opacity:.8;font-size:12.5px">${l[1]}</div></div></div>`).join('')}
+      </div>
+    </div>
+    <div style="background:var(--surface);display:flex;flex-direction:column;justify-content:center;padding:48px 46px">
+      <div style="max-width:440px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--ink-3);text-transform:uppercase;margin-bottom:6px">Sign in</div>
+        <h2 style="margin:0 0 4px;font-size:20px">Choose how you're working today</h2>
+        <p class="muted small" style="margin:0 0 20px">Your role sets what you can do this session and authors every action in the audit trail.</p>
+        ${Object.keys(ROLES).map(r=>`
+          <button onclick="signIn('${r}')" aria-pressed="false" style="width:100%;text-align:left;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;padding:14px 16px;margin-bottom:11px;cursor:pointer;font-family:inherit">
+            <div class="between"><b style="font-size:14.5px">${ROLES[r].split(' · ')[0]}</b><span class="muted small">${ROLES[r].split(' · ')[1]||''}</span></div>
+            <ul style="margin:8px 0 0;padding-left:16px;color:var(--ink-2);font-size:12.5px;line-height:1.7">${ROLE_CAPS[r].map(c=>`<li>${c}</li>`).join('')}</ul>
+          </button>`).join('')}
+        <div class="muted xsmall" style="margin-top:14px;line-height:1.6">Role selection stands in for single-sign-on in this prototype. Synthetic data only — no real patients.</div>
+      </div>
+    </div>
+  </div>`;
+}
+function signIn(role){ state.signedIn=true; state.role=role; Object.values(DATASETS).forEach(b=>{b.loaded=false;}); state.route='select';
+  logAudit('Signed in as '+ROLES[role].split(' · ')[0]+' — session started.','purple', ROLES[role]);
+  render(); }
+function signOut(){ state.signedIn=false; state.route='select'; render(); }
+function loadDataset(id){
+  activateDataset(id); DSB.loaded=true; state.tab=null;
+  logAudit('Loaded dataset '+DATA.dataset.name+' ('+DATA.dataset.id+') — registered read-only, checksum verified.','teal', ROLES[state.role]);
+  toast('Loaded '+DATA.dataset.name);
+  go('source');
+}
+function intakeStepper(active){
+  const steps=['Select dataset','Inspect & configure','Run scan'];
+  return `<div class="stepper" style="max-width:640px;margin:2px 0 20px">${steps.map((s,i)=>`<div class="step ${i<active?'done':i===active?'cur':''}"><span class="sn">${i<active?'✓':i+1}</span>${s}</div>`).join('')}</div>`;
+}
+function setRole(r){ state.role=r; toast((r==='executive'?'Executive read-only':ROLES[r].split(' · ')[0])+' role active','gov',false); render(); }
+function selectDataset(id){ activateDataset(id); state.tab=null; state.route = DSB.scanned?'overview':'source'; toast('Active dataset: '+DATA.dataset.name,null,false); render(); }
 function runScan(){
-  if(DSB.scanned){ toast('Scan already complete for this dataset'); return; }
+  if(DSB.scanned){ toast('Scan already complete for this dataset',null,false); return; }
   DSB.scanned=true;
   const sig=FINDINGS.reduce((a,f)=>a+(f.signals||1),0);
   logAudit(`Anomaly scan ${DATA.scan.id} executed — consolidated ${sig} signals into ${FINDINGS.length} findings across ${DATA.families.length} families; unreliable detectors withheld.`,'teal','System · detector '+DATA.scan.suite);
@@ -754,9 +809,9 @@ function scanRequiredPanel(){
 /* ---------- modal + toast ---------- */
 function openModal(html){ document.getElementById('modalRoot').innerHTML = `<div class="overlay" onclick="if(event.target===this)closeModal()">${html}</div>`; }
 function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
-function toast(msg, kind){
+function toast(msg, kind, logged=true){
   const el=document.createElement('div'); el.className='toast'+(kind==='gov'?' gov':'');
-  el.innerHTML=`<span class="ti">✓</span><span>${msg}<div class="xsmall" style="opacity:.7;margin-top:2px">Logged to activity timeline</div></span>`;
+  el.innerHTML=`<span class="ti">✓</span><span>${msg}${logged?'<div class="xsmall" style="opacity:.7;margin-top:2px">Logged to activity timeline</div>':''}</span>`;
   document.getElementById('toasts').appendChild(el);
   setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),300);},3400);
 }
@@ -773,6 +828,39 @@ function profileSeries(){
 }
 
 /* ---- Data Source & Config (pre-scan summary + metadata + scan setup) ---- */
+/* ---- Step 1: Select dataset ---- */
+SCREENS.select = ()=>{
+  return `
+  <div class="crumb">Get started<span class="sep">/</span>Select dataset</div>
+  <h1 class="page">Select a dataset to review</h1>
+  <p class="page-sub">Choose a procured real-world dataset to load. Loading registers the file read-only and starts the audit trail; you'll inspect the metadata and configure the scan before any anomalies are generated.</p>
+  ${intakeStepper(0)}
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+    ${Object.keys(DATASETS).map(id=>{ const b=DATASETS[id], m=b.meta;
+      const st = b.loaded?['green','Loaded']:(b.scanned?['grey','Pre-scanned']:['grey','Not loaded']);
+      return `<div class="card" style="cursor:pointer" onclick="loadDataset('${id}')" title="Load ${m.dataset.name}">
+        <div class="card-b">
+          <div class="between" style="margin-bottom:8px">
+            <div><b style="font-size:15px">${m.dataset.name}</b> <span class="tag">${m.dataset.id}</span></div>
+            <span class="chip ${st[0]}"><span class="cd"></span>${st[1]}</span>
+          </div>
+          <div class="muted small" style="margin-bottom:11px">${m.dataset.vendor}</div>
+          <div class="grid" style="grid-template-columns:1fr 1fr;gap:7px 18px;font-size:12px">
+            <div><span class="muted">Domains</span><br>${m.dataset.domains}</div>
+            <div><span class="muted">Window</span><br><span class="mono">${m.dataset.window}</span></div>
+            <div><span class="muted">Cohort</span><br>${m.cohort.name} ${m.cohort.version}</div>
+            <div><span class="muted">Cadence</span><br>${m.dataset.cadence}</div>
+          </div>
+          <div class="between" style="margin-top:12px">
+            <span class="xsmall muted">${m.cohort.patients?Number(m.cohort.patients).toLocaleString()+' patients':'&nbsp;'}</span>
+            <a class="small" style="font-weight:600">${b.loaded?'Open →':'Load dataset →'}</a>
+          </div>
+        </div></div>`;
+    }).join('')}
+  </div>`;
+};
+
+/* ---- Step 2: Inspect metadata + cohort, then configure the scan ---- */
 SCREENS.source = ()=>{
   const s=DATA.summary, d=DATA.dataset;
   const hasFail = s.readiness.some(r=>r[1]==='Fail');
@@ -783,6 +871,7 @@ SCREENS.source = ()=>{
     <p class="page-sub" style="margin-bottom:0">Review the dataset metadata and data summary, then configure and run the anomaly scan. No findings are generated until you run the scan.</p></div>
     <div>${DSB.scanned?`<span class="chip green"><span class="cd"></span>Scan complete · ${DATA.scan.id}</span>`:`<span class="chip amber"><span class="cd"></span>Scan not run</span>`}</div>
   </div>
+  ${DSB.scanned?'':intakeStepper(1)}
 
   <div class="grid" style="grid-template-columns:1fr 1fr;margin:6px 0 14px">
     <div class="card"><div class="card-h">Dataset metadata</div><div class="card-b">
@@ -859,10 +948,7 @@ SCREENS.overview = ()=>{
   const openInv=FINDINGS.filter(f=>['Under investigation','Submitted for review'].includes(f.status)).length;
   const famCounts={}; FINDINGS.forEach(f=>famCounts[f.family]=(famCounts[f.family]||0)+1);
   const statusCounts={}; FINDINGS.forEach(f=>statusCounts[f.status]=(statusCounts[f.status]||0)+1);
-  const pl=(profileSeries()||{labels:[]}).labels.slice(-12);
-  const compTrend={labels:pl.length?pl:['','','','','','','','','','','',''],
-    exp:Array(12).fill(97.5),lo:Array(12).fill(95),hi:Array(12).fill(99.5),
-    obs:[97.6,97.4,97.8,97.5,97.9,97.3,97.8,97.6,97.9,96.1,94.2,92.4],onset:null,incompleteFrom:11};
+  const comp=(DATA.summary&&DATA.summary.completeness)?DATA.summary.completeness:[];
   return `
   <div class="crumb"><a onclick="go('overview')">Workspace</a><span class="sep">/</span>Overview</div>
   <h1 class="page">Data-quality overview</h1>
@@ -871,7 +957,7 @@ SCREENS.overview = ()=>{
     <div class="kpi"><div class="v">${newCount}</div><div class="k">New DQ anomalies</div><div class="sub">since scan ${DATA.scan.id}</div></div>
     <div class="kpi risk"><div class="v">${hi}</div><div class="k">High priority (≥80)</div><div class="sub">require prompt triage</div></div>
     <div class="kpi warn"><div class="v">${likely}</div><div class="k">Likely / confirmed data issues</div><div class="sub">disposition-backed</div></div>
-    <div class="kpi"><div class="v">${openInv}</div><div class="k">Open investigations</div><div class="sub">1 awaiting review</div></div>
+    <div class="kpi"><div class="v">${openInv}</div><div class="k">Open investigations</div><div class="sub">${FINDINGS.filter(f=>f.status==='Submitted for review').length} awaiting review</div></div>
   </div>
   <div class="grid" style="grid-template-columns:1.15fr .85fr;margin-bottom:14px">
     <div class="card">
@@ -907,9 +993,8 @@ SCREENS.overview = ()=>{
       ${hbars(Object.entries(famCounts).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v,null,'var(--teal)']))}</div></div>
     <div class="card"><div class="card-h">Findings by review status</div><div class="card-b">
       ${hbars(Object.entries(statusCounts).map(([k,v])=>[k,v,null, k==='Submitted for review'?'var(--purple)':k==='Monitoring'?'var(--green)':'var(--teal)']))}</div></div>
-    <div class="card"><div class="card-h">Completeness trend <span class="r">12 mo · expected band</span></div><div class="card-b">
-      ${expectedBandChart(compTrend,{h:150})}
-      <div class="legend"><span class="li"><span class="sw" style="background:var(--band)"></span>Expected range</span><span class="li"><span class="sw" style="background:var(--teal)"></span>Observed</span><span class="li"><span class="sw" style="background:var(--red)"></span>Out of range</span></div>
+    <div class="card"><div class="card-h">Field completeness <span class="r">current release</span></div><div class="card-b">
+      ${comp.length?hbars(comp.map(c=>[c[0],c[1],100, c[2]==='amber'?'var(--amber)':c[2]==='red'?'var(--red)':'var(--green)', c[1]+'%'])):'<div class="muted small">No completeness snapshot for this dataset.</div>'}
     </div></div>
   </div>`;
 };
@@ -942,7 +1027,7 @@ SCREENS.cohort = ()=>{
       <div class="row" style="margin-bottom:10px"><span class="muted small">Granularity</span><div class="seg"><button class="on">Monthly</button><button>Weekly</button></div>
         <span class="muted small">Normalize</span><div class="seg"><button class="on">per 1,000</button><button>absolute</button></div></div>
       <div class="row" style="margin-bottom:12px"><span class="chip grey"><span class="cd"></span>Region: All</span><span class="chip grey"><span class="cd"></span>Payer: All</span><span class="chip grey"><span class="cd"></span>Setting: Outpatient</span></div>
-      <button class="btn sm" onclick="toast('View saved to a new investigation draft')">＋ Save view to investigation</button>
+      <button class="btn sm" onclick="toast('View saved to a new investigation draft',null,false)">＋ Save view to investigation</button>
       <div class="callout teal" style="margin-top:12px"><span class="ci">i</span><div>Filters are curated and segment comparison is fixed. Arbitrary ad-hoc exploration and cohort authoring are future-state.</div></div>
     </div></div>
   </div>`;
@@ -1049,7 +1134,7 @@ function openFinding(id){
   </div>
   <div class="modal-f">
     ${f.report?`<button class="btn" onclick="closeModal();go('monitoring')">View monitoring</button>`:''}
-    ${f.status==='New'&&can('edit')?`<button class="btn pri" onclick="closeModal();toast('Investigation opened from ${f.id}')">Open investigation</button>`:''}
+    ${f.status==='New'&&can('edit')?`<button class="btn pri" onclick="closeModal();toast('Investigation opened from ${f.id}',null,false)">Open investigation</button>`:''}
     <button class="btn" onclick="closeModal()">Close</button>
   </div></div>`);
 }
@@ -1073,7 +1158,7 @@ SCREENS.investigations = ()=>{
     <div class="kpi"><div class="v">4.2d</div><div class="k">Median time-to-disposition</div></div>
   </div>
   <div class="between" style="margin-bottom:10px"><h3 style="margin:0;font-size:14px">Active & recent</h3>
-    <button class="btn sm" onclick="toast('New investigation drafted from reported issue')">＋ Open investigation from reported issue</button></div>
+    <button class="btn sm" onclick="toast('New investigation drafted from reported issue',null,false)">＋ Open investigation from reported issue</button></div>
   <div class="card"><table class="tbl">
     <thead><tr><th>Investigation</th><th>Finding</th><th>Origin</th><th>Owner</th><th>Opened</th><th>Status</th><th>Disposition</th></tr></thead>
     <tbody>
@@ -1155,7 +1240,7 @@ INV_TABS.evidence=(f)=>{
 };
 function setEvMode(m){ state._evmode=m; render(); }
 function toggleDrill(){
-  if(!can('edit')){ toast('Read-only role cannot open row-level view','gov'); return; }
+  if(!can('edit')){ toast('Read-only role cannot open row-level view','gov',false); return; }
   const ref=auditRef(); INV.rowAccess.push(ref);
   logAudit('Opened audited row-level drill-down (attributed patients, exited provider groups). Reference '+ref+'.','purple');
   toast('Row-level access logged · '+ref,'gov'); render();
@@ -1308,18 +1393,19 @@ INV_TABS.review=(f)=>{
       <div class="small muted" style="margin-bottom:8px">Analyst position: <b>Likely data issue · data coverage</b> (preserved verbatim). Record your decision:</div>
       <div class="row" style="gap:7px">
         <button class="btn gov" onclick="reviewerApprove()">Approve with comments</button>
-        <button class="btn" onclick="toast('Returned to analyst with comments','gov')">Return</button>
-        <button class="btn" onclick="toast('Change-impact request logged','gov')">Change impact</button>
-        <button class="btn" onclick="toast('Hypothesis challenge logged','gov')">Challenge hypothesis</button>
-        <button class="btn" onclick="toast('Additional check requested','gov')">Request check</button>
-        <button class="btn" onclick="toast('Escalated','gov')">Escalate</button>
-        <button class="btn" onclick="toast('Marked unresolved','gov')">Mark unresolved</button>
+        <button class="btn" onclick="revAct('Returned to analyst with comments')">Return</button>
+        <button class="btn" onclick="revAct('Change-impact requested')">Change impact</button>
+        <button class="btn" onclick="revAct('Hypothesis challenged')">Challenge hypothesis</button>
+        <button class="btn" onclick="revAct('Additional check requested')">Request check</button>
+        <button class="btn" onclick="revAct('Escalated for further review')">Escalate</button>
+        <button class="btn" onclick="revAct('Marked unresolved')">Mark unresolved</button>
       </div>
       <div class="callout purple" style="margin-top:12px"><span class="ci">i</span><div>Analyst and reviewer positions are preserved separately forever, even in disagreement.</div></div>`
     :`<div class="callout amber"><span class="ci">🔒</span><div>Only the <b>Reviewer</b> role can act on a submitted finding. Switch role to Reviewer (Dr. L. Ferreira) in the header to approve, return, or challenge.</div></div>`}
   </div></div>`;
 };
 function rq(i,v){ INV['rq'+i]=v; render(); }
+function revAct(label){ logAudit('Reviewer decision on '+(INV&&INV.id?INV.id:'finding')+': '+label+'.','purple','Dr. L. Ferreira · Reviewer'); toast(label,'gov'); }
 function reviewerApprove(){
   INV.approved=true; INV.reportVersion='REP-2026-041 v1.0';
   FINDINGS.find(f=>f.id==='ANM-0142').status='Closed — report';
@@ -1481,7 +1567,7 @@ function holdModal(){
 }
 function doHold(){
   const r=document.getElementById('holdReason').value.trim();
-  if(!r){ toast('Rationale required to hold'); return; }
+  if(!r){ toast('Rationale required to hold',null,false); return; }
   DATA._v07decision={verdict:'Held', by:(state.role==='reviewer'?'Dr. L. Ferreira':'M. Okafor'), ts:'2026-07-29'};
   RELEASES.find(x=>x.v==='v2026.07').verdict='Held';
   logAudit('Release v2026.07 HELD. Rationale: '+r+'. Vendor + study teams notified.','red');
@@ -1690,7 +1776,7 @@ render();
      Data file (pipeline_findings.js) is regenerated by
      src/findings_mapper.py — this glue code is stable.
      ============================================================ -->
-<script src="pipeline_findings.js?v=5"></script>
+<script src="pipeline_findings.js?v=6"></script>
 <script>
 (function(){
   if(!window.SYN_FINDINGS){ console.warn('pipeline_findings.js not loaded'); return; }
@@ -1736,7 +1822,8 @@ render();
         + 'title="Click to see the '+f.signals+' claims">'
         + '<div class="card-b">'
         +   '<div class="between" style="margin-bottom:7px">'
-        +     '<div class="row" style="gap:10px"><b style="font-size:15.5px">'+f.kind+'</b>'
+        +     '<div class="row" style="gap:8px"><b style="font-size:15.5px">'+f.kind+'</b>'
+        +       (f.nature?'<span class="chip '+(f.nature==='Rule violation'?'teal':'grey')+'"><span class="cd"></span>'+f.nature+'</span>':'')
         +       '<span class="chip '+sev+'"><span class="cd"></span>'+f.dqrisk+'</span></div>'
         +     '<div class="row" style="gap:7px;align-items:baseline"><span class="num" style="font-size:22px;font-weight:600">'+f.signals+'</span>'
         +       '<span class="muted small">claims</span></div>'
@@ -1788,7 +1875,7 @@ render();
     if(!f || !f.evidence){ return _origOpenFinding(id); }  // narrative datasets unchanged
     var rows = f.evidence.map(function(e){
       return '<tr>'
-        + '<td class="mono" style="font-weight:600">'+e.claim_id+'</td>'
+        + '<td class="mono" style="font-weight:600" title="'+e.claim_id+'">'+e.claim_id.slice(0,8)+'…</td>'
         + '<td>'+e.cls+'</td>'
         + '<td style="text-align:right">'+e.age+'</td>'
         + '<td style="text-align:right">$'+e.billed.toLocaleString()+'</td>'
@@ -1803,10 +1890,12 @@ render();
       + '<h3 style="margin-left:6px">'+f.kind+'</h3>'
       + '<button class="x" onclick="closeModal()">×</button></div>'
       + '<div class="modal-b">'
-      + '<div class="row" style="gap:6px;margin-bottom:14px">'
+      + '<div class="row" style="gap:6px;margin-bottom:12px">'
+      +   (f.nature?'<span class="chip '+(f.nature==='Rule violation'?'teal':'grey')+'"><span class="cd"></span>'+f.nature+'</span>':'')
       +   '<span class="chip '+sev+'"><span class="cd"></span>'+f.dqrisk+'</span>'
       +   (f.category?'<span class="chip grey"><span class="cd"></span>'+f.category+' — '+({Univariate:'one column',"Cross-column":'two fields disagree',Multivariate:'many columns'}[f.category]||'')+'</span>':'')
       +   '<span class="chip grey"><span class="cd"></span>'+f.signals+' claims flagged</span></div>'
+      + (f.natureNote?'<div class="callout '+(f.nature==='Rule violation'?'teal':'amber')+'" style="margin-bottom:14px"><span class="ci">'+f.nature+'</span><div>'+f.natureNote+'</div></div>':'')
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
       +   '<div class="callout teal"><span class="ci">What this is</span><div>'+f.what+'</div></div>'
       +   '<div class="callout amber"><span class="ci">Why it’s flagged</span><div>'+f.whyFlag+'</div></div>'
