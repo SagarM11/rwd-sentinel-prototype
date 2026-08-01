@@ -813,6 +813,7 @@ const SCAN_GATED=['overview','anomalies','investigations','investigation','monit
 function screenContent(){
   const scr=state.route;
   if(scr==='select') return SCREENS.select();
+  if(scr==='vendor-eval') return SCREENS['vendor-eval']();  // pre-load, available before a dataset is loaded
   if(!DSB.loaded) return SCREENS.select();                 // must load a dataset first
   if(SCAN_GATED.includes(scr) && !DSB.scanned) return scanRequiredPanel();
   return (SCREENS[scr]||SCREENS.overview)();
@@ -863,6 +864,8 @@ function intakeStepper(active){
   return `<div class="stepper" style="max-width:640px;margin:2px 0 20px">${steps.map((s,i)=>`<div class="step ${i<active?'done':i===active?'cur':''}"><span class="sn">${i<active?'✓':i+1}</span>${s}</div>`).join('')}</div>`;
 }
 function setRole(r){ state.role=r; toast((r==='executive'?'Executive read-only':ROLES[r].split(' · ')[0])+' role active','gov',false); render(); }
+function qSet(k,v){ state.q=state.q||{}; if(v)state.q[k]=v; else delete state.q[k]; if(k==='text')state._focusSearch=true; render(); }
+function qClear(){ state.q={}; render(); }
 function selectDataset(id){ activateDataset(id); state.tab=null; state.route = DSB.scanned?'overview':'source'; toast('Active dataset: '+DATA.dataset.name,null,false); render(); }
 function runScan(){
   if(DSB.scanned){ toast('Scan already complete for this dataset',null,false); return; }
@@ -906,6 +909,42 @@ function profileSeries(){
 }
 
 /* ---- Data Source & Config (pre-scan summary + metadata + scan setup) ---- */
+/* ---- Vendor evaluation (pre-load): longitudinal density → accept / negotiate / reject ---- */
+const VENDOR_EVAL={
+  'DSN-114':{density:'High', followup:'34 mo median', continuity:'71% ≥ 24 mo enrolled', gaps:'Low (4% span gaps)', verdict:'Accept', note:'Dense longitudinal claims with strong continuous enrollment — good value for cardiometabolic outcomes work.'},
+  'EHR-207':{density:'Moderate', followup:'22 mo median', continuity:'54% ≥ 24 mo active', gaps:'Moderate (site heterogeneity)', verdict:'Negotiate', note:'Good clinical depth but two health systems are thin — negotiate price down or scope them out before purchase.'},
+  'SYN-001':{density:'n/a (synthetic)', followup:'lifelong (generated)', continuity:'100% (synthetic)', gaps:'None', verdict:'Accept', note:'Synthetic reference dataset — not an actual purchase decision.'}
+};
+SCREENS['vendor-eval'] = ()=>{
+  return `
+  <div class="crumb"><a onclick="go('select')">Get started</a><span class="sep">/</span>Vendor evaluation</div>
+  <h1 class="page">Vendor evaluation — before you buy</h1>
+  <p class="page-sub">Assess the longitudinal density of a candidate dataset before purchase. Sparse, shallow data is the most expensive mistake — this is the stage to negotiate price or walk away.</p>
+  <div class="grid" style="gap:14px">
+    ${Object.keys(DATASETS).map(id=>{ const m=DATASETS[id].meta, e=VENDOR_EVAL[id]||{};
+      const vc=e.verdict==='Accept'?'green':e.verdict==='Reject'?'red':'amber';
+      return `<div class="card"><div class="card-b">
+        <div class="between" style="margin-bottom:10px"><div><b style="font-size:15px">${m.dataset.name}</b> <span class="tag">${m.dataset.id}</span><div class="muted small">${m.dataset.vendor}</div></div>
+          <span class="chip ${vc}"><span class="cd"></span>Recommendation: ${e.verdict}</span></div>
+        <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:10px;font-size:12.5px;margin-bottom:10px">
+          <div><span class="muted">Longitudinal density</span><br><b>${e.density}</b></div>
+          <div><span class="muted">Median follow-up</span><br><b>${e.followup}</b></div>
+          <div><span class="muted">Continuity</span><br><b>${e.continuity}</b></div>
+          <div><span class="muted">Coverage gaps</span><br><b>${e.gaps}</b></div>
+        </div>
+        <div class="muted small" style="margin-bottom:12px">${e.note}</div>
+        <div class="row" style="gap:7px">
+          <button class="btn ${vc==='green'?'pri':''} sm" onclick="vendorDecision('${id}','Accept for onboarding')">Accept for onboarding</button>
+          <button class="btn sm" onclick="vendorDecision('${id}','Negotiate price')">Negotiate price</button>
+          <button class="btn danger sm" onclick="vendorDecision('${id}','Reject vendor')">Reject</button>
+          <a class="small" style="margin-left:auto;align-self:center" onclick="loadDataset('${id}')">Proceed to load →</a>
+        </div>
+      </div></div>`;
+    }).join('')}
+  </div>`;
+};
+function vendorDecision(id,d){ if(!can('edit')){ toast('Read-only role cannot record vendor decisions',null,false); return; } logAudit('Vendor evaluation — '+DATASETS[id].meta.dataset.name+': '+d+'.','purple'); toast(d+' — recorded','gov'); }
+
 /* ---- Step 1: Select dataset ---- */
 SCREENS.select = ()=>{
   return `
@@ -913,6 +952,7 @@ SCREENS.select = ()=>{
   <h1 class="page">Select a dataset to review</h1>
   <p class="page-sub">Choose a procured real-world dataset to load. Loading registers the file read-only and starts the audit trail; you'll inspect the metadata and configure the scan before any anomalies are generated.</p>
   ${intakeStepper(0)}
+  <div style="margin:-6px 0 14px"><a class="small" style="font-weight:600" onclick="go('vendor-eval')">◧ Evaluate vendor data before loading →</a></div>
   <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
     ${Object.keys(DATASETS).map(id=>{ const b=DATASETS[id], m=b.meta;
       const st = b.loaded?['green','Loaded']:(b.scanned?['grey','Pre-scanned']:['grey','Not loaded']);
@@ -1182,18 +1222,31 @@ function codeListModal(){
 
 /* ---- DQ Anomalies queue ---- */
 SCREENS.anomalies = ()=>{
-  const rows=[...FINDINGS].sort((a,b)=>b.priority-a.priority);
+  const q=state.q||(state.q={});
+  const uniq=k=>Array.from(new Set(FINDINGS.map(f=>f[k]).filter(Boolean)));
+  let rows=[...FINDINGS];
+  if(q.level) rows=rows.filter(f=>f.level===q.level);
+  if(q.property) rows=rows.filter(f=>f.property===q.property);
+  if(q.status) rows=rows.filter(f=>f.status===q.status);
+  if(q.text){ const t=q.text.toLowerCase(); rows=rows.filter(f=>((f.id||'')+' '+(f.title||'')+' '+(f.family||'')+' '+(f.summary||'')).toLowerCase().includes(t)); }
+  rows.sort((a,b)=>b.priority-a.priority);
+  const SS='border:1px solid var(--line-strong);border-radius:7px;padding:6px 9px;font-size:12.5px;font-family:inherit;background:var(--surface)';
+  const sel=(k,label,opts)=>`<select onchange="qSet('${k}',this.value)" style="${SS}"><option value="">${label}</option>${opts.map(o=>`<option ${q[k]===o?'selected':''}>${o}</option>`).join('')}</select>`;
+  const active=q.level||q.property||q.status||q.text;
   return `
   <div class="crumb"><a onclick="go('overview')">Findings</a><span class="sep">/</span>DQ Anomalies</div>
-  <h1 class="page">DQ Anomalies <span class="chip grey" style="vertical-align:middle">${rows.length} findings</span></h1>
-  <p class="page-sub">Every finding is a suspected data issue until checks show otherwise. The investigation-priority score is always shown decomposed into its six components — never as a bare number.</p>
-  <div class="row" style="margin-bottom:14px">
-    <div class="seg"><button class="on">All families</button></div>
-    <div class="seg"><button class="on">All priority</button></div>
-    <div class="seg"><button class="on">All status</button></div>
+  <h1 class="page">DQ Anomalies <span class="chip grey" style="vertical-align:middle">${rows.length}${rows.length!==FINDINGS.length?' of '+FINDINGS.length:''} findings</span></h1>
+  <p class="page-sub">Every finding is a suspected data issue until checks show otherwise. Filter by detection level and affected quality property — the two axes — or search by id.</p>
+  <div class="row" style="margin-bottom:14px;gap:8px">
+    <input id="qsearch" value="${(q.text||'').replace(/"/g,'&quot;')}" oninput="qSet('text',this.value)" placeholder="Search id or text…" style="${SS};min-width:190px">
+    ${sel('level','All levels',['Pipeline','Entity','Patient'])}
+    ${sel('property','All properties',uniq('property'))}
+    ${sel('status','All statuses',uniq('status'))}
+    ${active?`<button class="btn sm" onclick="qClear()">Clear</button>`:''}
     <span class="muted small" style="margin-left:auto">Sorted by priority ▾</span>
   </div>
   <div class="grid" style="gap:12px">
+  ${rows.length?'':`<div class="muted" style="padding:22px 4px">No findings match these filters. <a onclick="qClear()">Clear filters</a></div>`}
   ${rows.map(f=>`
     <div class="card" style="cursor:pointer" onclick="openFinding('${f.id}')">
       <div class="card-b">
@@ -1241,12 +1294,27 @@ function openFinding(id){
     ${scoreBars(f.score)}
     <p class="small muted" style="margin-top:8px;font-style:italic">${f.why||''}</p>
     ${f.origin==='reported-by-study-team'?`<div class="callout purple" style="margin-top:12px"><span class="ci">↳</span><div>Origin: reported by study team ST-198 — demonstrates the analyst-raised investigation path (${f.inv}). Remedy is a code-list update, not a vendor escalation.</div></div>`:''}
+    <div class="divider"></div>
+    <h4 style="margin:6px 0 8px;font-size:13px">Analyst notes ${f.notes&&f.notes.length?`<span class="chip grey" style="vertical-align:middle">${f.notes.length}</span>`:''}</h4>
+    ${(f.notes||[]).map(n=>`<div class="evrow" style="padding:7px 0"><span class="em" style="width:104px">${n.ts}</span><span class="chip grey" style="align-self:flex-start"><span class="cd"></span>${n.actor}</span><span style="flex:1">${n.text}</span></div>`).join('')||'<div class="muted small" style="margin-bottom:4px">No notes yet.</div>'}
+    ${can('edit')?`<div class="row" style="gap:8px;margin-top:9px;align-items:flex-start">
+      <textarea id="notein" placeholder="Add a note — observations, next steps, who you pinged…" style="flex:1;border:1px solid var(--line-strong);border-radius:7px;padding:8px;font-family:inherit;font-size:12.5px" rows="2"></textarea>
+      <button class="btn sm pri" onclick="addFindingNote('${f.id}')">Add note</button></div>`:'<div class="locknote">🔒 Read-only role cannot add notes.</div>'}
   </div>
   <div class="modal-f">
     ${f.report?`<button class="btn" onclick="closeModal();go('monitoring')">View monitoring</button>`:''}
     ${f.status==='New'&&can('edit')?`<button class="btn pri" onclick="closeModal();toast('Investigation opened from ${f.id}',null,false)">Open investigation</button>`:''}
     <button class="btn" onclick="closeModal()">Close</button>
   </div></div>`);
+}
+function addFindingNote(id){
+  const el=document.getElementById('notein'); const t=((el&&el.value)||'').trim();
+  if(!t){ toast('Enter a note first',null,false); return; }
+  const f=FINDINGS.find(x=>x.id===id); f.notes=f.notes||[];
+  const actor=(state.role==='reviewer'?'Dr. L. Ferreira · Reviewer':state.role==='executive'?'Executive':'M. Okafor · Analyst').split(' · ')[0];
+  f.notes.push({ts:nowStamp(), actor, text:t.replace(/</g,'&lt;')});
+  logAudit('Note added to '+id+': "'+t.slice(0,80)+(t.length>80?'…':'')+'".','teal');
+  toast('Note added'); openFinding(id);
 }
 function miniEvidenceChart(f){
   // synthetic small band chart; clamp the parsed magnitude so odd units don't blow up the axis
@@ -1752,13 +1820,19 @@ function stageOf(f){
   return 'Production';
 }
 const LIFECYCLE=[
-  {stage:'Vendor evaluation', sev:'grey', risk:'Buying low-value, sparse data', target:'Historical longitudinal density', action:'Negotiate price or reject the vendor', link:null, note:'Pre-purchase — assessed before a dataset is ever loaded.'},
+  {stage:'Vendor evaluation', sev:'grey', risk:'Buying low-value, sparse data', target:'Historical longitudinal density', action:'Negotiate price or reject the vendor', link:null, note:'Pre-purchase. <a onclick="go(&#39;vendor-eval&#39;)">Open vendor evaluation →</a>'},
   {stage:'Onboarding', sev:'red', risk:'Hard structural pipeline breaks', target:'Schema & mapping non-compliance', action:'Reject the initial load; update mapping', link:['vendor','Vendor Management']},
   {stage:'Staging', sev:'red', risk:'Production data pollution', target:'Batch volumes, file sizes, null spikes', action:'Quarantine the batch; alert the engineer', link:['refreshes','Dataset Refreshes']},
   {stage:'Production', sev:'amber', risk:'Creeping data erosion over time', target:'Distribution drift, code-frequency shifts', action:'Trigger an upstream data-governance review', link:['refreshes','Release decision']},
   {stage:'ARD creation', sev:'red', risk:'Silent pipeline logic / SQL bugs', target:'Attrition rates, temporal-logic breaks', action:'Fail the build; block analyst access', link:['investigations','Investigations']},
   {stage:'Use-case application', sev:'amber', risk:'Hallucinated ML / analytics results', target:'Input feature-vector outlier status', action:'Bypass inference; route to manual review', link:['study-impact','Study Impact']}
 ];
+const STAGE_VERB={Onboarding:'Reject load',Staging:'Quarantine batch',Production:'Trigger review','ARD creation':'Fail build','Use-case application':'Bypass inference'};
+function lifecycleAct(stage, verb){
+  if(!can('edit')){ toast('Read-only role cannot take governance actions',null,false); return; }
+  logAudit('Lifecycle action — '+stage+': '+verb+' (recorded).','purple');
+  toast(verb+' — recorded','gov');
+}
 const LEVEL_CHECKS={
   Pipeline:[['Volume forecasting',['volume']],['Freshness / latency',['freshness','latency','runout']],['Schema drift',['schema']]],
   Entity:[['Missingness spikes',['missing','completeness']],['Code cardinality (PSI / Chi²)',['cardinality','distribution','code']],['Referential integrity',['referential']],['Source concentration / coverage',['concentration','coverage']]],
@@ -1780,7 +1854,7 @@ SCREENS.lifecycle=()=>{
             ${L.link?`<span class="chip ${n?'amber':'grey'}"><span class="cd"></span>${n} finding${n===1?'':'s'}</span>`:`<span class="chip grey"><span class="cd"></span>pre-load</span>`}</div>
           <div style="font-size:12px;margin-bottom:7px"><span class="muted">Risk:</span> ${L.risk}</div>
           <div style="font-size:12px;margin-bottom:8px"><span class="muted">Detects:</span> ${L.target}</div>
-          <div class="callout ${L.sev==='red'?'red':L.sev==='amber'?'amber':'teal'}" style="padding:8px 11px;font-size:12px"><span class="ci">Action</span><div>${L.action}</div></div>
+          <div class="callout ${L.sev==='red'?'red':L.sev==='amber'?'amber':'teal'}" style="padding:8px 11px;font-size:12px"><span class="ci">Action</span><div>${L.action}${STAGE_VERB[L.stage]?`<div style="margin-top:7px"><button class="btn sm ${L.sev==='red'?'danger':L.sev==='amber'?'':'pri'}" onclick="event.stopPropagation();lifecycleAct('${L.stage}','${STAGE_VERB[L.stage]}')">${STAGE_VERB[L.stage]}</button></div>`:''}</div></div>
           ${L.link?`<div class="small" style="margin-top:9px"><a onclick="go('${L.link[0]}')">→ ${L.link[1]}</a></div>`:`<div class="muted xsmall" style="margin-top:9px">${L.note}</div>`}
         </div></div>`;
     }).join('')}
@@ -1938,7 +2012,10 @@ const origRender = render;
 render = function(){ origRender(); const m=document.querySelector('main');
   if(m){ const fn=document.createElement('div'); fn.className='foot-note';
     fn.innerHTML='Synthetic / prototype data — all entities are fictional. Replace this note with the environment banner in production. RWD Sentinel v1.0.';
-    m.appendChild(fn);} };
+    m.appendChild(fn);}
+  if(state._focusSearch){ const el=document.getElementById('qsearch'); if(el){ el.focus(); const v=el.value; try{el.setSelectionRange(v.length,v.length);}catch(e){} } state._focusSearch=false; } };
+// keyboard: Escape closes any open modal
+document.addEventListener('keydown', function(e){ if(e.key==='Escape' && document.getElementById('modalRoot').innerHTML) closeModal(); });
 render();
 </script>
 
