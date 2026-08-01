@@ -1865,6 +1865,94 @@ render();
   }
   var sevOf = function(f){ return /Confirmed/.test(f.dqrisk)?'red':/Likely/.test(f.dqrisk)?'amber':'teal'; };
 
+  // which raw columns each kind implicates (for the raw-records view + export)
+  function synKindCols(kind){
+    var k=String(kind).toLowerCase();
+    if(k.indexOf('bill')>=0) return ['Billed'];
+    if(k.indexOf('procedures on one')>=0) return ['Lines'];
+    if(k.indexOf('note')>=0) return ['Note','Visit type'];
+    if(k.indexOf('age')>=0) return ['Age','Note'];
+    return ['Multiple'];
+  }
+  // flatten every finding's evidence into one raw-record table, most unusual first
+  function synFlaggedRows(){
+    var rows=[];
+    (window.SYN_FINDINGS||[]).forEach(function(f){ (f.evidence||[]).forEach(function(e){
+      rows.push({claim:e.claim_id, cls:e.cls, age:e.age, billed:e.billed, nproc:e.nproc,
+        note:cleanNote(e.note), score:e.score, kind:f.kind, nature:f.nature, property:f.property,
+        finding:f.id, cols:synKindCols(f.kind), reason:e.reason});
+    });});
+    return rows.sort(function(a,b){ return b.score-a.score; });
+  }
+  function setSynView(v){ state.synView=v; render(); }
+  // raw-dataset view: one row per flagged record, offending columns highlighted
+  function synRecordsTable(){
+    var rows=synFlaggedRows();
+    var fh=function(r,col,extra){ return 'padding:6px 8px;'+(extra||'')+(r.cols.indexOf(col)>=0?'background:var(--red-tint);color:var(--red);font-weight:600':''); };
+    return '<div class="muted small" style="margin-bottom:8px">Every flagged record over the raw dataset — the <b style="color:var(--red)">highlighted cells</b> are the columns that triggered the flag. '+rows.length+' records, most unusual first.</div>'
+     + '<div style="overflow-x:auto"><table class="ev-tbl" style="width:100%;border-collapse:collapse;font-size:12px">'
+     + '<thead><tr style="text-align:left;border-bottom:1px solid var(--line);color:var(--ink-3)">'
+     + '<th style="padding:6px 8px">Claim</th><th style="padding:6px 8px">Visit type</th>'
+     + '<th style="padding:6px 8px;text-align:right">Age</th><th style="padding:6px 8px;text-align:right">Billed</th>'
+     + '<th style="padding:6px 8px;text-align:right">Lines</th><th style="padding:6px 8px;text-align:right">Unusualness</th>'
+     + '<th style="padding:6px 8px">Note</th><th style="padding:6px 8px">Anomaly kind</th></tr></thead><tbody>'
+     + rows.map(function(r){
+         return '<tr>'
+          + '<td class="mono" style="padding:6px 8px;font-weight:600" title="'+r.claim+'">'+r.claim.slice(0,8)+'…</td>'
+          + '<td style="'+fh(r,'Visit type')+'">'+r.cls+'</td>'
+          + '<td style="'+fh(r,'Age','text-align:right;')+'">'+r.age+'</td>'
+          + '<td style="'+fh(r,'Billed','text-align:right;')+'">$'+Number(r.billed).toLocaleString()+'</td>'
+          + '<td style="'+fh(r,'Lines','text-align:right;')+'">'+r.nproc+'</td>'
+          + '<td style="padding:6px 8px;text-align:right">'+r.score.toFixed(2)+'</td>'
+          + '<td style="'+fh(r,'Note','max-width:34ch;font-size:11.5px;')+'" class="'+(r.cols.indexOf('Note')>=0?'':'muted')+'">'+r.note+'</td>'
+          + '<td style="padding:6px 8px"><span class="chip '+(r.nature==='Rule violation'?'teal':'grey')+'" style="cursor:pointer" onclick="openFinding(\''+r.finding+'\')"><span class="cd"></span>'+r.kind+'</span>'
+          +   (r.cols.indexOf('Multiple')>=0?' <span class="muted xsmall">all columns</span>':'')+'</td>'
+          + '</tr>';
+       }).join('')
+     + '</tbody></table></div>';
+  }
+  // ---- export ----
+  function downloadBlob(content, mime, filename){
+    try{ var b=new Blob([content],{type:mime}), u=URL.createObjectURL(b), a=document.createElement('a');
+      a.href=u; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){URL.revokeObjectURL(u);},1500); return true; }catch(e){ return false; }
+  }
+  function csvCell(x){ x=String(x==null?'':x); return /[",\n]/.test(x)?('"'+x.replace(/"/g,'""')+'"'):x; }
+  function exportFlaggedCSV(){
+    var rows=synFlaggedRows();
+    var head=['claim_id','visit_type','age','billed','lines','unusualness','anomaly_kind','nature','affected_property','flagged_columns','note'];
+    var body=rows.map(function(r){ return [r.claim,r.cls,r.age,r.billed,r.nproc,r.score,r.kind,r.nature,r.property,r.cols.join(' | '),r.note].map(csvCell).join(','); });
+    downloadBlob([head.join(',')].concat(body).join('\n'),'text/csv','synthea_flagged_anomalies.csv');
+    logAudit('Exported flagged-anomaly report (CSV, '+rows.length+' records).','teal');
+    toast('CSV exported · '+rows.length+' records');
+  }
+  function exportScanReport(){
+    var rows=synFlaggedRows(), S=window.SYN_SUMMARY||{}, F=window.SYN_FINDINGS||[];
+    var breached=F.filter(function(f){return f.breached;}).length;
+    var byProp={}; rows.forEach(function(r){ byProp[r.property]=(byProp[r.property]||0)+1; });
+    var esc=function(x){ return String(x==null?'':x).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); };
+    var html='<!doctype html><meta charset="utf-8"><title>Anomaly scan report — Synthea RWD</title>'
+     +'<style>body{font-family:IBM Plex Sans,Arial,sans-serif;color:#16242B;max-width:900px;margin:32px auto;padding:0 20px}h1{font-size:22px}h2{font-size:15px;margin-top:26px;border-bottom:1px solid #E2E7EB;padding-bottom:5px}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}th,td{text-align:left;padding:5px 7px;border-bottom:1px solid #E2E7EB}th{color:#7A8892;text-transform:uppercase;font-size:10px;letter-spacing:.5px}.hl{background:#FBE7E5;color:#B5342B;font-weight:600}.muted{color:#7A8892}</style>'
+     +'<h1>Anomaly scan report — Synthea RWD (SYN-001)</h1>'
+     +'<div class="muted">Generated '+esc(nowStamp())+' · synthetic data (MITRE Synthea) · illustrative only.</div>'
+     +'<h2>Summary</h2><ul>'
+     +'<li>'+Number(S.scanned||0).toLocaleString()+' records reviewed; <b>'+ (S.flagged||rows.length) +'</b> flagged (~'+Math.max(1,Math.round((S.flagged||rows.length)/(S.scanned||1)*100))+'%).</li>'
+     +'<li>'+breached+' of '+F.length+' checks breached their expected background band and were promoted to findings.</li>'
+     +'<li>By affected property: '+Object.keys(byProp).map(function(k){return esc(k)+' '+byProp[k];}).join(' · ')+'.</li></ul>'
+     +'<h2>Checks</h2><table><thead><tr><th>Kind</th><th>Nature</th><th>Property</th><th>Records</th><th>Flag rate</th><th>Finding?</th></tr></thead><tbody>'
+     + F.map(function(f){ return '<tr><td>'+esc(f.kind)+'</td><td>'+esc(f.nature)+'</td><td>'+esc(f.property)+'</td><td>'+f.signals+'</td><td>'+f.flagRate+'%</td><td>'+(f.breached?'Yes':'No — within background')+'</td></tr>'; }).join('')
+     +'</tbody></table>'
+     +'<h2>Flagged records ('+rows.length+')</h2><table><thead><tr><th>Claim</th><th>Visit</th><th>Age</th><th>Billed</th><th>Lines</th><th>Kind</th><th>Flagged columns</th><th>Note</th></tr></thead><tbody>'
+     + rows.map(function(r){ var h=function(c,v){return '<td'+(r.cols.indexOf(c)>=0?' class="hl"':'')+'>'+esc(v)+'</td>';};
+         return '<tr><td>'+esc(r.claim.slice(0,8))+'…</td>'+h('Visit type',r.cls)+h('Age',r.age)+h('Billed','$'+r.billed)+h('Lines',r.nproc)+'<td>'+esc(r.kind)+'</td><td>'+esc(r.cols.join(', '))+'</td><td class="muted">'+esc(r.note)+'</td></tr>'; }).join('')
+     +'</tbody></table>';
+    downloadBlob(html,'text/html','synthea_anomaly_report.html');
+    logAudit('Generated anomaly scan report (HTML) — '+rows.length+' flagged records, '+breached+' findings.','teal');
+    toast('Report generated (HTML)');
+  }
+  // expose the handlers referenced from inline onclick (defined inside this IIFE)
+  window.setSynView=setSynView; window.exportFlaggedCSV=exportFlaggedCSV; window.exportScanReport=exportScanReport;
+
   // 3a) Re-arranged workflow for the scan: the DQ Anomalies screen opens on a
   //     plain count + a one-line summary of each KIND, and the user drills into
   //     the underlying claims from there. Narrative datasets keep the original view.
@@ -1873,6 +1961,7 @@ render();
     if(state.dataset!=='SYN-001') return _origAnom();
     var S = window.SYN_SUMMARY || {scanned:0, flagged:0, findings:0};
     var pct = Math.max(1, Math.round((S.flagged/(S.scanned||1))*100));
+    var view = state.synView||'kinds';
     var fs = FINDINGS.slice().sort(function(a,b){ return b.signals - a.signals; });
     var cardHtml = function(f){
       var sev = sevOf(f);
@@ -1929,7 +2018,42 @@ render();
       +   '<div class="kpi"><div class="v">'+fs.filter(function(f){return f.breached;}).length+' / '+S.findings+'</div><div class="k">Checks breached → findings</div></div>'
       +   '<div class="kpi"><div class="v">~'+pct+'%</div><div class="k">Of all claims</div></div>'
       + '</div>'
-      + sections;
+      + '<div class="between" style="margin:6px 0 14px">'
+      +   '<div class="seg"><button class="'+(view==='records'?'':'on')+'" onclick="setSynView(\'kinds\')">By kind</button>'
+      +     '<button class="'+(view==='records'?'on':'')+'" onclick="setSynView(\'records\')">Flagged records</button></div>'
+      +   '<div class="row" style="gap:8px"><button class="btn sm" onclick="exportFlaggedCSV()">⤓ Export CSV</button>'
+      +     '<button class="btn sm" onclick="go(\'reports\')">Report &amp; export →</button></div>'
+      + '</div>'
+      + (view==='records' ? synRecordsTable() : sections);
+  };
+
+  // 3a-ii) Reports & export page for the scan (records + summary → CSV / HTML).
+  var _origReports = SCREENS.reports;
+  SCREENS.reports = function(){
+    if(state.dataset!=='SYN-001') return _origReports();
+    var rows=synFlaggedRows(), S=window.SYN_SUMMARY||{}, F=window.SYN_FINDINGS||[];
+    var breached=F.filter(function(f){return f.breached;}).length;
+    var byProp={}; rows.forEach(function(r){ byProp[r.property]=(byProp[r.property]||0)+1; });
+    var propBars=Object.keys(byProp).sort(function(a,b){return byProp[b]-byProp[a];}).map(function(k){return [k,byProp[k],null,'var(--teal)'];});
+    return ''
+     + '<div class="crumb"><a onclick="go(\'overview\')">Governance</a><span class="sep">/</span>Reports</div>'
+     + '<div class="between"><h1 class="page">Anomaly scan report</h1>'
+     +   '<div class="row" style="gap:8px"><button class="btn" onclick="exportFlaggedCSV()">⤓ Download CSV</button>'
+     +     '<button class="btn pri" onclick="exportScanReport()">⤓ Download report (HTML)</button></div></div>'
+     + '<p class="page-sub">A shareable summary of the '+(S.flagged||rows.length)+' flagged records and the checks that produced them. The export includes every flagged record with the columns that triggered it. Synthetic data only.</p>'
+     + '<div class="kpis" style="margin-bottom:14px">'
+     +   '<div class="kpi"><div class="v">'+Number(S.scanned||0).toLocaleString()+'</div><div class="k">Records reviewed</div></div>'
+     +   '<div class="kpi warn"><div class="v">'+(S.flagged||rows.length)+'</div><div class="k">Flagged</div></div>'
+     +   '<div class="kpi"><div class="v">'+breached+' / '+F.length+'</div><div class="k">Findings (checks breached)</div></div>'
+     +   '<div class="kpi"><div class="v">'+Object.keys(byProp).length+'</div><div class="k">Properties affected</div></div>'
+     + '</div>'
+     + '<div class="grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px">'
+     +   '<div class="card"><div class="card-h">By affected property</div><div class="card-b">'+hbars(propBars)+'</div></div>'
+     +   '<div class="card"><div class="card-h">Checks → findings</div><div class="card-b"><table class="tbl"><thead><tr><th>Kind</th><th>Records</th><th>Rate</th><th>Promoted?</th></tr></thead><tbody>'
+     +     F.map(function(f){return '<tr class="click" onclick="openFinding(\''+f.id+'\')"><td>'+f.kind+'</td><td class="num">'+f.signals+'</td><td class="num">'+f.flagRate+'%</td><td>'+(f.breached?'<span class="chip green"><span class="cd"></span>finding</span>':'<span class="chip grey"><span class="cd"></span>background</span>')+'</td></tr>';}).join('')
+     +   '</tbody></table></div></div>'
+     + '</div>'
+     + '<div class="card"><div class="card-h">Flagged records <span class="r">'+rows.length+' · offending columns highlighted</span></div><div class="card-b">'+synRecordsTable()+'</div></div>';
   };
 
   // 3b) Plain-language drill-down: what it is, why it's flagged, what to check,
