@@ -745,6 +745,7 @@ const NAV = [
     ['monitoring','Monitoring','◷'],
   ]],
   ['GOVERNANCE',[
+    ['lifecycle','Data Lifecycle','◫'],
     ['study-impact','Study Impact','⚖',false,()=>STUDIES.filter(s=>s.decision==='Pending').length],
     ['vendor','Vendor Management','⛭',false,()=>TICKETS.filter(t=>t.status!=='Closed').length],
     ['reports','Reports','▤'],
@@ -808,7 +809,7 @@ function render(){
     <main>${screenContent()}</main>
   </div>`;
 }
-const SCAN_GATED=['overview','anomalies','investigations','investigation','monitoring','refreshes','study-impact','vendor','reports'];
+const SCAN_GATED=['overview','anomalies','investigations','investigation','monitoring','refreshes','study-impact','vendor','reports','lifecycle'];
 function screenContent(){
   const scr=state.route;
   if(scr==='select') return SCREENS.select();
@@ -1740,6 +1741,69 @@ function notifyModal(){
 function sendNotify(){ logAudit('Study-team notification sent (contents archived to audit trail).','teal'); closeModal(); toast('Notice sent — contents archived','gov'); }
 
 /* ---- Vendor Management ---- */
+/* ---- Data Lifecycle (Option 3): where each check runs + operational action per stage ---- */
+function stageOf(f){
+  const fam=(f.family||'').toLowerCase(), lvl=f.level;
+  if(fam.indexOf('schema')>=0) return 'Onboarding';
+  if(fam.indexOf('freshness')>=0||fam.indexOf('latency')>=0||fam.indexOf('missing')>=0||fam.indexOf('completeness')>=0||fam.indexOf('volume')>=0) return 'Staging';
+  if(fam.indexOf('cardinality')>=0||fam.indexOf('distribution')>=0||fam.indexOf('concentration')>=0||fam.indexOf('coverage')>=0||fam.indexOf('code emergence')>=0||fam.indexOf('code ')>=0) return 'Production';
+  if(fam.indexOf('temporal')>=0||fam.indexOf('sequencing')>=0||fam.indexOf('referential')>=0||fam.indexOf('relationship')>=0) return 'ARD creation';
+  if(lvl==='Patient'||fam.indexOf('plausibility')>=0||fam.indexOf('co-occurrence')>=0||fam.indexOf('unit')>=0||fam.indexOf('vitals')>=0||fam.indexOf('timestamp')>=0) return 'Use-case application';
+  return 'Production';
+}
+const LIFECYCLE=[
+  {stage:'Vendor evaluation', sev:'grey', risk:'Buying low-value, sparse data', target:'Historical longitudinal density', action:'Negotiate price or reject the vendor', link:null, note:'Pre-purchase — assessed before a dataset is ever loaded.'},
+  {stage:'Onboarding', sev:'red', risk:'Hard structural pipeline breaks', target:'Schema & mapping non-compliance', action:'Reject the initial load; update mapping', link:['vendor','Vendor Management']},
+  {stage:'Staging', sev:'red', risk:'Production data pollution', target:'Batch volumes, file sizes, null spikes', action:'Quarantine the batch; alert the engineer', link:['refreshes','Dataset Refreshes']},
+  {stage:'Production', sev:'amber', risk:'Creeping data erosion over time', target:'Distribution drift, code-frequency shifts', action:'Trigger an upstream data-governance review', link:['refreshes','Release decision']},
+  {stage:'ARD creation', sev:'red', risk:'Silent pipeline logic / SQL bugs', target:'Attrition rates, temporal-logic breaks', action:'Fail the build; block analyst access', link:['investigations','Investigations']},
+  {stage:'Use-case application', sev:'amber', risk:'Hallucinated ML / analytics results', target:'Input feature-vector outlier status', action:'Bypass inference; route to manual review', link:['study-impact','Study Impact']}
+];
+const LEVEL_CHECKS={
+  Pipeline:[['Volume forecasting',['volume']],['Freshness / latency',['freshness','latency','runout']],['Schema drift',['schema']]],
+  Entity:[['Missingness spikes',['missing','completeness']],['Code cardinality (PSI / Chi²)',['cardinality','distribution','code']],['Referential integrity',['referential']],['Source concentration / coverage',['concentration','coverage']]],
+  Patient:[['Boundary checks (IQR / Z by age·sex)',['unit','vitals','plausibility','value']],['Temporal sequencing',['temporal','sequencing','timestamp']],['Co-occurrence implausibility',['co-occurrence','conflict']]]
+};
+const LEVEL_DESC={Pipeline:'Metadata layer — catches system-level failures before data reaches analytics.',Entity:'Aggregate layer — monitors the population-level distribution of clinical concepts.',Patient:'Clinical layer — finds per-patient implausibilities and sequencing errors.'};
+SCREENS.lifecycle=()=>{
+  const counts={}; FINDINGS.forEach(f=>{ const s=stageOf(f); counts[s]=(counts[s]||0)+1; });
+  const activeFams=FINDINGS.map(f=>(f.family||'').toLowerCase());
+  return `
+  <div class="crumb"><a onclick="go('overview')">Governance</a><span class="sep">/</span>Data Lifecycle</div>
+  <h1 class="page">Data lifecycle — where each check runs</h1>
+  <p class="page-sub">Anomaly detection isn't a single gate — it runs at every stage of the data's life, each with its own risk and its own operational action. The findings on this dataset are mapped to the stage where they'd be caught and acted on.</p>
+  <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px">
+    ${LIFECYCLE.map((L,i)=>{ const n=counts[L.stage]||0;
+      return `<div class="card" style="border-top:3px solid var(--${L.sev==='red'?'red':L.sev==='amber'?'amber':'line-strong'})">
+        <div class="card-b">
+          <div class="between" style="margin-bottom:7px"><div class="row" style="gap:7px"><span class="chip grey mono">${i+1}</span><b style="font-size:14px">${L.stage}</b></div>
+            ${L.link?`<span class="chip ${n?'amber':'grey'}"><span class="cd"></span>${n} finding${n===1?'':'s'}</span>`:`<span class="chip grey"><span class="cd"></span>pre-load</span>`}</div>
+          <div style="font-size:12px;margin-bottom:7px"><span class="muted">Risk:</span> ${L.risk}</div>
+          <div style="font-size:12px;margin-bottom:8px"><span class="muted">Detects:</span> ${L.target}</div>
+          <div class="callout ${L.sev==='red'?'red':L.sev==='amber'?'amber':'teal'}" style="padding:8px 11px;font-size:12px"><span class="ci">Action</span><div>${L.action}</div></div>
+          ${L.link?`<div class="small" style="margin-top:9px"><a onclick="go('${L.link[0]}')">→ ${L.link[1]}</a></div>`:`<div class="muted xsmall" style="margin-top:9px">${L.note}</div>`}
+        </div></div>`;
+    }).join('')}
+  </div>
+  <div class="card" style="margin-top:14px"><div class="card-h">Findings on this dataset, by lifecycle stage</div><div class="card-b"><table class="tbl">
+    <thead><tr><th>Stage</th><th>Detection level(s)</th><th>Findings</th><th>Example</th></tr></thead><tbody>
+    ${LIFECYCLE.filter(L=>L.link).map(L=>{ const fs=FINDINGS.filter(f=>stageOf(f)===L.stage);
+      return `<tr><td><b>${L.stage}</b></td><td class="small muted">${Array.from(new Set(fs.map(f=>f.level).filter(Boolean))).join(', ')||'—'}</td>
+        <td class="num">${fs.length}</td><td class="small">${fs[0]?fs[0].title:'—'}</td></tr>`;
+    }).join('')}
+  </tbody></table></div></div>
+  <div class="card" style="margin-top:14px"><div class="card-h">Detection coverage by level <span class="r">what's monitored vs. gaps</span></div><div class="card-b">
+    ${['Pipeline','Entity','Patient'].map(lvl=>{ const checks=LEVEL_CHECKS[lvl];
+      return `<div style="margin-bottom:12px">
+        <div class="row" style="gap:9px;align-items:baseline;margin-bottom:5px"><b style="font-size:13.5px">${lvl} level</b><span class="muted small">${LEVEL_DESC[lvl]}</span></div>
+        <div class="row" style="gap:6px">${checks.map(c=>{ const active=c[1].some(k=>activeFams.some(fam=>fam.indexOf(k)>=0));
+          return `<span class="chip ${active?'green':'grey'}" title="${active?'actively detecting on this dataset':'recognised — not yet detecting'}"><span class="cd"></span>${c[0]}${active?'':' · gap'}</span>`;}).join('')}</div>
+      </div>`;
+    }).join('')}
+    <div class="callout teal" style="margin-top:6px"><span class="ci">Level × property</span><div>Every finding is tagged with its <b>detection level</b> (where the check runs) and its <b>affected property</b> (what quality dimension is at risk) — the two axes to navigate by. <span style="color:var(--green)">Green</span> = a check this dataset is actively surfacing; grey = recognised but not yet detecting here.</div></div>
+  </div></div>`;
+};
+
 SCREENS.vendor=()=>{
   return `
   <div class="crumb"><a onclick="go('overview')">Governance</a><span class="sep">/</span>Vendor Management</div>
