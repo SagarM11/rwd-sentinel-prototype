@@ -302,6 +302,30 @@ const CLAIMS_FINDINGS = [
     priority:41, status:'Monitoring', timing:'Recurring', signals:2, dqi:true,
     score:{Magnitude:34,Confidence:56,Reach:38,Persistence:64,Recency:48,'Data-quality risk':44},
     report:'REP-2026-038', ticket:'VND-2025-009' },
+  { id:'ANM-0155', family:'Freshness / latency', title:'Ingestion latency spiked +6 days for submitter S-118',
+    summary:'Median event-to-ingestion delay for submitter S-118 jumped from 3 to 9 days this refresh — recent periods are artificially sparse until it clears.',
+    measure:'Event-to-ingestion latency', segment:'Submitter S-118', period:'2026-06 refresh',
+    magnitude:'+6 days median', reach:'Recent-period completeness', confidence:'High', persistence:'1 period', dqrisk:'Likely data issue',
+    priority:69, status:'New', timing:'Introduced by refresh', signals:2, dqi:true,
+    score:{Magnitude:58,Confidence:80,Reach:52,Persistence:40,Recency:88,'Data-quality risk':70},
+    property:'Timeliness', signature:'Level shift', nature:'Outlier', level:'Pipeline',
+    why:'Upstream transmission delay inflates apparent recent-period sparsity until runout completes.' },
+  { id:'ANM-0156', family:'Code cardinality (PSI)', title:'NDC frequency distribution shift — PSI 0.28 at refresh',
+    summary:'The population distribution of dispensed NDC codes shifted sharply (Population Stability Index 0.28, "major") at the v2026.06 boundary — consistent with a new pharmacy submitter or a remapping.',
+    measure:'NDC distribution (PSI)', segment:'Pharmacy', period:'2026-06 refresh',
+    magnitude:'PSI 0.28 (major shift)', reach:'Rx-based measures', confidence:'High', persistence:'1 period', dqrisk:'Suspected data issue',
+    priority:72, status:'New', timing:'Introduced by refresh', signals:3, dqi:true,
+    score:{Magnitude:70,Confidence:78,Reach:60,Persistence:42,Recency:86,'Data-quality risk':66},
+    property:'Conformance', signature:'Distribution shift', nature:'Outlier', level:'Entity',
+    why:'PSI ≥ 0.25 indicates a major population distribution shift — review before Rx measures are trusted.' },
+  { id:'ANM-0157', family:'Referential integrity', title:'38,400 pharmacy claims reference member IDs absent from enrollment',
+    summary:'Pharmacy claims this refresh include member IDs with no matching enrollment record — orphaned scripts that silently drop from any per-member analysis.',
+    measure:'Orphan claim rate', segment:'Pharmacy ↔ enrollment', period:'2026-06 refresh',
+    magnitude:'2.1% orphaned (38,400)', reach:'Per-member Rx rates', confidence:'High', persistence:'1 period', dqrisk:'Confirmed data issue',
+    priority:78, status:'New', timing:'Introduced by refresh', signals:2, dqi:true,
+    score:{Magnitude:66,Confidence:88,Reach:64,Persistence:44,Recency:86,'Data-quality risk':90},
+    property:'Conformance', signature:'Ratio / consistency break', nature:'Rule violation', level:'Entity',
+    why:'A hard referential break — claims with no eligible member cannot be attributed and bias per-member denominators.' },
 ];
 
 const CLAIMS_RELEASES = [
@@ -516,6 +540,30 @@ const EHR_FINDINGS = [
     priority:43, status:'Monitoring', timing:'Recurring', signals:2, dqi:true,
     score:{Magnitude:36,Confidence:58,Reach:40,Persistence:66,Recency:50,'Data-quality risk':46},
     report:'REP-EHR-006', ticket:'VEN-2025-020' },
+  { id:'EHR-0220', family:'Schema drift', title:'Source extract added 3 unmapped columns; lab status type changed',
+    summary:'The Northlake EHR extract this cycle added three columns absent from the data dictionary and changed lab result_status from string to integer — unmapped structural mutations.',
+    measure:'Schema conformance', segment:'Northlake extract', period:'2026-07 extract',
+    magnitude:'3 new cols + 1 type change', reach:'Ingestion / mapping', confidence:'High', persistence:'1 period', dqrisk:'Confirmed data issue',
+    priority:75, status:'New', timing:'Introduced by refresh', signals:2, dqi:true,
+    score:{Magnitude:60,Confidence:90,Reach:58,Persistence:40,Recency:88,'Data-quality risk':88},
+    property:'Conformance', signature:'Schema drift', nature:'Rule violation', level:'Pipeline',
+    why:'Structural non-compliance vs the data dictionary — must be mapped or rejected before load.' },
+  { id:'EHR-0221', family:'Temporal sequencing', title:'1,240 encounters recorded after the patient death date',
+    summary:'Encounters and lab results are timestamped after the recorded date of death for 1,240 patients — a logically impossible sequence pointing to a date or linkage error.',
+    measure:'Post-mortem event count', segment:'Deceased cohort', period:'2024-01 → 2026-06',
+    magnitude:'1,240 patients', reach:'Longitudinal analyses', confidence:'High', persistence:'Recurring', dqrisk:'Confirmed data issue',
+    priority:80, status:'New', timing:'Newly detected', signals:2, dqi:true,
+    score:{Magnitude:70,Confidence:90,Reach:58,Persistence:66,Recency:70,'Data-quality risk':90},
+    property:'Timeliness', signature:'Ratio / consistency break', nature:'Rule violation', level:'Patient',
+    why:'Events after death are logically impossible — a sequencing/linkage defect, near-certain.' },
+  { id:'EHR-0222', family:'Co-occurrence implausibility', title:'312 sex-incompatible diagnoses (e.g. prostate dx on female-sex records)',
+    summary:'Diagnoses incompatible with the recorded biological sex appear for 312 patients (prostate conditions on female-sex records, pregnancy on male-sex records) — a clinical contradiction.',
+    measure:'Sex–diagnosis compatibility', segment:'Cohort-wide', period:'2024-01 → 2026-06',
+    magnitude:'312 patients', reach:'Sex-stratified analyses', confidence:'High', persistence:'Recurring', dqrisk:'Likely data issue',
+    priority:64, status:'New', timing:'Newly detected', signals:2, dqi:true,
+    score:{Magnitude:52,Confidence:84,Reach:46,Persistence:60,Recency:66,'Data-quality risk':78},
+    property:'Plausibility', signature:'Ratio / consistency break', nature:'Rule violation', level:'Patient',
+    why:'Sex-incompatible clinical coding is a contradiction — a mapping or patient-linkage error.' },
 ];
 const EHR_RELEASES = [
   { v:'v2026.03', verdict:'Accepted', note:'No restrictions', by:'A. Reyes', ts:'2026-03-06' },
@@ -1161,7 +1209,9 @@ SCREENS.anomalies = ()=>{
         <div style="font-weight:600;font-size:14px;margin-bottom:3px">${f.title}</div>
         <div class="muted small" style="margin-bottom:10px;max-width:92ch">${f.summary}</div>
         <div class="row" style="gap:6px;margin-bottom:9px">
+          ${f.level?`<span class="chip" style="background:#E7F0EE;color:#2B5A52;border:1px solid #BBD6CF" title="Detection level"><span class="cd" style="background:#2B5A52"></span>${f.level} level</span>`:''}
           ${f.property?`<span class="chip teal" title="Affected quality dimension"><span class="cd"></span>${f.property}</span>`:''}
+          ${f.nature?`<span class="chip ${f.nature==='Rule violation'?'teal':'grey'}" title="Rule violation vs outlier"><span class="cd"></span>${f.nature}</span>`:''}
           ${f.signature?`<span class="chip grey" title="Statistical signature"><span class="cd"></span>${f.signature}</span>`:''}
           <span class="chip grey" style="opacity:.85" title="Detector"><span class="cd"></span>detector: ${f.family}</span>
         </div>
@@ -1198,9 +1248,10 @@ function openFinding(id){
   </div></div>`);
 }
 function miniEvidenceChart(f){
-  // synthetic small band chart
-  const base=100, s={labels:['','','','','','','','','','','',''],exp:Array(12).fill(base),lo:Array(12).fill(base*0.94),hi:Array(12).fill(base*1.06),
-    obs:[100,101,99,100,101,99,100,101,99,100, base*(1+ (parseFloat(f.magnitude)||-5)/200), base*(1+(parseFloat(f.magnitude)||-5)/100)],onset:10,incompleteFrom:null};
+  // synthetic small band chart; clamp the parsed magnitude so odd units don't blow up the axis
+  const base=100, mag=Math.max(-40,Math.min(40, parseFloat(f.magnitude)|| -5));
+  const s={labels:['','','','','','','','','','','',''],exp:Array(12).fill(base),lo:Array(12).fill(base*0.94),hi:Array(12).fill(base*1.06),
+    obs:[100,101,99,100,101,99,100,101,99,100, base*(1+mag/200), base*(1+mag/100)],onset:10,incompleteFrom:null};
   return expectedBandChart(s,{h:150});
 }
 
